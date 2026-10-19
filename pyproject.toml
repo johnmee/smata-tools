@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smata-archive"
+version = "0.1.0"
+description = "Keep a complete local copy of the documents a SMATA strata owner account can see."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = ["requests>=2.28"]
+
+[project.scripts]
+smata-archive = "smata_archive:main"
+
+[tool.setuptools]
+py-modules = ["smata_archive"]

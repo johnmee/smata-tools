@@ -1,0 +1,7 @@
+# Copy to ~/.config/smata-archive/config.toml
+login_url = "https://<tenant>.my.smata.com"
+email = "me@example.com"
+dest = "~/smata-files"
+timezone = "Australia/Sydney"
+# Optional. Its first output line is used as the password. Never put the password itself here.
+# password_command = "pass show smata"
