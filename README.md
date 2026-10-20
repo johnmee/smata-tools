@@ -62,3 +62,7 @@ Caveat: because detail isn't saved on a dry run, the next dry run (or real run) 
 
 
 ## DEVELOPMENT
+
+### Tests
+
+> uv run python -m unittest tests/test_smata_archive.py

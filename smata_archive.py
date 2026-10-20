@@ -576,7 +576,7 @@ def deep_merge(old: dict, new: dict) -> dict:
 # Configuration and CLI
 
 
-HELP_EPILOG = f"""\
+HELP_EPILOG = """\
 examples:
   smata-archive                                     # uses ./config.toml
   smata-archive my-config.toml
