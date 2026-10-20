@@ -10,7 +10,7 @@ Nothing local is ever deleted: items that stop being listed are marked "gone" bu
 
 Only GET requests are made against the API.
 
-    smata-archive ~/smata --login-url https://<tenant>.my.smata.com --email me@example.com
+    smata-archive [config.toml]
 
 Programmatic use:
 
@@ -42,8 +42,6 @@ import json
 import logging
 import os
 import re
-import shlex
-import subprocess
 import sys
 import time
 import tomllib
@@ -62,9 +60,7 @@ log = logging.getLogger("smata_archive")
 # Input parameters
 API_BASE = "https://my.smata.com/api"
 USER_AGENT = f"smata-archive/{__version__} (+https://github.com/)"
-DEFAULT_TIMEZONE = "Australia/Sydney"
-DEFAULT_DEST = "smata-files"
-DEFAULT_CONFIG = Path.home() / ".config" / "smata-archive" / "config.toml"
+DEFAULT_CONFIG = Path("config.toml")
 
 # The format of document filenames on local disk.  Variants and attachments extend by a
 # non-numeric suffix (-original, -pdf, -att<id>) so they never match.
@@ -107,7 +103,7 @@ class SmataClient:
 
     def __init__(self,
         login_url: str,
-        timezone: str = DEFAULT_TIMEZONE,
+        timezone: str,
         *,
         api_base: str = API_BASE,
         min_interval: float = 0.25,
@@ -582,30 +578,22 @@ def deep_merge(old: dict, new: dict) -> dict:
 
 HELP_EPILOG = f"""\
 examples:
-  smata-archive ~/smata --login-url https://acme.my.smata.com --email me@example.com
-  SMATA_PASSWORD=... smata-archive ~/smata          # login URL and email from the config file
-  pass show smata | smata-archive ~/smata --password-stdin
-  smata-archive ~/smata --dry-run                   # show what would be downloaded
+  smata-archive                                     # uses ./config.toml
+  smata-archive my-config.toml
+  smata-archive --dry-run              # show what would be downloaded
 
-config file ({DEFAULT_CONFIG}, or --config FILE), TOML:
+config file (CONFIG), TOML:
   login_url = "https://acme.my.smata.com"
   email = "me@example.com"
   dest = "~/smata"
   timezone = "Australia/Sydney"
-  password_command = "pass show smata"    # optional; its first output line is the password
-  A "password" key is refused: use password_command, SMATA_PASSWORD or a prompt.
+  password = "..."                        # optional plaintext; chmod 600 the config file; else prompted
 
-precedence: command-line flag, then environment (SMATA_LOGIN_URL, SMATA_EMAIL),
-  then config file, then default.
-password: --password-stdin, then SMATA_PASSWORD, then password_command, then a prompt.
-
-The archive keeps every file and the raw metadata under DEST. Re-running
+The archive keeps every file and the raw metadata under 'dest'. Re-running
 downloads only what is missing; items that disappear from SMATA are marked
-"gone" in DEST/metadata/documents.json and never deleted locally.
+"gone" in <dest>/metadata/documents.json and never deleted locally.
 
-File URLs in the metadata download without a login. Never publish an archive folder.
-
-exit codes: 0 ok, 1 runtime or network error, 2 usage error, 3 login failed.
+Exit codes: 0 ok, 1 runtime or network error, 2 usage error, 3 login failed.
 """
 
 
@@ -614,13 +602,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="smata-archive",
         description="Download and retain every document and invoice a SMATA owner account can see.",
         epilog=HELP_EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("dest", nargs="?", metavar="DEST", help=f"archive folder (default: config 'dest', else ./{DEFAULT_DEST})")
-    p.add_argument("--login-url", help="your SMATA login page, e.g. https://<tenant>.my.smata.com")
-    p.add_argument("--email", help="login email")
-    p.add_argument("--password-stdin", action="store_true", help="read the password from the first line of stdin")
-    p.add_argument("--config", type=Path, help=f"config file (default: {DEFAULT_CONFIG})")
-    p.add_argument("--timezone", help=f"IANA time zone sent to the API (default: {DEFAULT_TIMEZONE})")
-    p.add_argument("--dry-run", action="store_true", help="list what would be downloaded; write nothing")
+    p.add_argument("config", nargs="?", type=Path, default=DEFAULT_CONFIG, metavar="CONFIG",
+                   help=f"TOML config file (default: {DEFAULT_CONFIG})")
+    p.add_argument("-d", "--dry-run", action="store_true", help="list what would be downloaded; write nothing")
     g = p.add_mutually_exclusive_group()
     g.add_argument("-q", "--quiet", action="store_true", help="print only errors")
     g.add_argument("-v", "--verbose", action="store_true", help="print every request and file")
@@ -629,83 +613,50 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 @dataclass
-class Settings:
+class Config:
     login_url: str
     email: str
     dest: Path
     timezone: str
-    password_command: str | None
+    password: str | None = None
 
 
-def load_config(path: Path | None) -> dict:
-    """Reads the TOML config. A missing default config is fine; a missing --config is not."""
-    explicit = path is not None
-    path = path or DEFAULT_CONFIG
+def load_config(path: Path) -> dict:
+    """Reads the TOML config. Raises ConfigError if it is missing or invalid."""
     if not path.exists():
-        if explicit:
-            raise ConfigError(f"config file not found: {path}")
-        return {}
+        raise ConfigError(f"config file not found: {path}")
     try:
         with open(path, "rb") as f:
             cfg = tomllib.load(f)
     except tomllib.TOMLDecodeError as e:
         raise ConfigError(f"{path}: {e}") from e
-    if "password" in cfg:
-        raise ConfigError(f"{path}: refusing a plaintext 'password' key. Remove it and use "
-                          "password_command (e.g. \"pass show smata\"), SMATA_PASSWORD, or the prompt.")
-    unknown = set(cfg) - {"login_url", "email", "dest", "timezone", "password_command"}
+    if "password" in cfg and path.stat().st_mode & 0o077:
+        log.warning("%s holds a plaintext password but is readable by others; run: chmod 600 %s", path, path)
+    unknown = set(cfg) - {"login_url", "email", "dest", "timezone", "password"}
     if unknown:
         raise ConfigError(f"{path}: unknown keys: {', '.join(sorted(unknown))}")
     return cfg
 
 
-def resolve_settings(args: argparse.Namespace, env: dict, cfg: dict) -> Settings:
-    def pick(flag, env_key, cfg_key, default=None):
-        for v in (flag, env.get(env_key) if env_key else None, cfg.get(cfg_key)):
-            if v:
-                return v
-        return default
-
-    login_url = pick(args.login_url, "SMATA_LOGIN_URL", "login_url")
-    email = pick(args.email, "SMATA_EMAIL", "email")
-    missing = [n for n, v in (("--login-url", login_url), ("--email", email)) if not v]
+def resolve_config(cfg: dict) -> Config:
+    missing = [k for k in ("login_url", "email", "dest", "timezone") if not cfg.get(k)]
     if missing:
-        raise ConfigError(f"missing {' and '.join(missing)} (flag, environment variable or config file)")
-    dest = Path(os.path.expanduser(pick(args.dest, None, "dest", DEFAULT_DEST)))
-    return Settings(login_url, email, dest, pick(args.timezone, None, "timezone", DEFAULT_TIMEZONE),
-                    cfg.get("password_command"))
+        raise ConfigError(f"missing {', '.join(missing)} in the config file")
+    return Config(cfg["login_url"], cfg["email"], Path(os.path.expanduser(cfg["dest"])),
+                    cfg["timezone"], cfg.get("password"))
 
 
-def resolve_password(args: argparse.Namespace, env: dict, settings: Settings, stdin=None) -> str:
-    stdin = stdin or sys.stdin
-    if args.password_stdin:
-        pw = stdin.readline().rstrip("\r\n")
-        if not pw:
-            raise ConfigError("--password-stdin: nothing on stdin")
-        return pw
-    if env.get("SMATA_PASSWORD"):
-        return env["SMATA_PASSWORD"]
-    if settings.password_command:
-        try:
-            out = subprocess.run(shlex.split(settings.password_command), capture_output=True,
-                                 text=True, check=True).stdout
-        except (OSError, subprocess.CalledProcessError) as e:
-            raise ConfigError(f"password_command failed: {e}") from e
-        pw = out.splitlines()[0] if out else ""
-        if not pw:
-            raise ConfigError("password_command printed nothing")
-        return pw
+def resolve_password(config: Config) -> str:
+    if config.password:
+        return config.password
     if not sys.stdin.isatty():
-        raise ConfigError("no password: set SMATA_PASSWORD, use --password-stdin or password_command")
-    return getpass.getpass(f"SMATA password for {settings.email}: ")
+        raise ConfigError("no password: set 'password' in the config file")
+    return getpass.getpass(f"SMATA password for {config.email}: ")
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     parser = build_parser()
-    if not argv:
-        parser.print_help()
-        return 0
     try:
         args = parser.parse_args(argv)
     except SystemExit as e:
@@ -717,16 +668,16 @@ def main(argv: list[str] | None = None) -> int:
         logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     try:
-        settings = resolve_settings(args, os.environ, load_config(args.config))
-        password = resolve_password(args, os.environ, settings)
+        config = resolve_config(load_config(args.config))
+        password = resolve_password(config)
     except ConfigError as e:
         print(f"smata-archive: {e}", file=sys.stderr)
         return 2
 
-    client = SmataClient(settings.login_url, timezone=settings.timezone)
+    client = SmataClient(config.login_url, timezone=config.timezone)
     try:
-        client.login(settings.email, password)
-        result = Archive(settings.dest).sync(client, dry_run=args.dry_run)
+        client.login(config.email, password)
+        result = Archive(config.dest).sync(client, dry_run=args.dry_run)
     except AuthError as e:
         print(f"smata-archive: {e}", file=sys.stderr)
         return 3

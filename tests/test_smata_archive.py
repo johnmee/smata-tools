@@ -1,6 +1,5 @@
 """Offline tests. Run with `python -m unittest` or `pytest`. All data is fake."""
 
-import argparse
 import io
 import json
 import os
@@ -213,34 +212,29 @@ class SyncTests(Base):
 
 
 class ConfigTests(Base):
-    def args(self, **kw):
-        base = {"dest": None, "login_url": None, "email": None, "timezone": None, "password_stdin": False}
-        base.update(kw)
-        return argparse.Namespace(**base)
+    CFG = {"login_url": "cfg.example", "email": "cfg@x", "dest": "~/cfgdest", "timezone": "UTC"}
 
-    def test_precedence_flag_env_config(self):
-        cfg = {"login_url": "cfg.example", "email": "cfg@x", "dest": "~/cfgdest"}
-        s = sa.resolve_settings(self.args(), {"SMATA_EMAIL": "env@x"}, cfg)
-        self.assertEqual((s.login_url, s.email, s.dest), ("cfg.example", "env@x", Path(os.path.expanduser("~/cfgdest"))))
-        s = sa.resolve_settings(self.args(email="flag@x", dest="d"), {"SMATA_EMAIL": "env@x"}, cfg)
-        self.assertEqual((s.email, s.dest, s.timezone), ("flag@x", Path("d"), sa.DEFAULT_TIMEZONE))
+    def test_config_values(self):
+        s = sa.resolve_config(self.CFG)
+        self.assertEqual((s.login_url, s.email, s.dest, s.timezone),
+                         ("cfg.example", "cfg@x", Path(os.path.expanduser("~/cfgdest")), "UTC"))
 
-    def test_missing_login_url_is_a_config_error(self):
-        with self.assertRaises(sa.ConfigError):
-            sa.resolve_settings(self.args(email="a@b"), {}, {})
+    def test_every_required_key_is_enforced(self):
+        for key in ("login_url", "email", "dest", "timezone"):
+            cfg = {k: v for k, v in self.CFG.items() if k != key}
+            with self.assertRaisesRegex(sa.ConfigError, key):
+                sa.resolve_config(cfg)
 
-    def test_password_in_config_refused(self):
+    def test_missing_config_file_is_a_config_error(self):
+        with self.assertRaisesRegex(sa.ConfigError, "not found"):
+            sa.load_config(self.dest / "nope.toml")
+
+    def test_password_in_config_used(self):
         p = self.dest / "c.toml"
-        p.write_text('login_url = "x"\npassword = "secret"\n')
-        with self.assertRaisesRegex(sa.ConfigError, "password_command"):
-            sa.load_config(p)
-
-    def test_password_order(self):
-        s = sa.Settings("u", "e", Path("d"), "UTC", f"{sys.executable} -c \"print('fromcmd')\"")
-        self.assertEqual(sa.resolve_password(self.args(password_stdin=True), {"SMATA_PASSWORD": "env"}, s,
-                                             stdin=io.StringIO("stdin\n")), "stdin")
-        self.assertEqual(sa.resolve_password(self.args(), {"SMATA_PASSWORD": "env"}, s), "env")
-        self.assertEqual(sa.resolve_password(self.args(), {}, s), "fromcmd")
+        p.write_text('login_url = "x"\nemail = "e"\ndest = "d"\ntimezone = "UTC"\npassword = "secret"\n')
+        p.chmod(0o600)
+        s = sa.resolve_config(sa.load_config(p))
+        self.assertEqual(sa.resolve_password(s), "secret")
 
     def test_login_url_normalised(self):
         for u in ("acme.my.smata.com", "https://acme.my.smata.com/", "https://acme.my.smata.com/users/sign_in"):
@@ -248,26 +242,46 @@ class ConfigTests(Base):
 
 
 class CliTests(unittest.TestCase):
-    def test_no_args_prints_help(self):
+    def test_help_flag_prints_help(self):
         out = io.StringIO()
         old, sys.stdout = sys.stdout, out
         try:
-            self.assertEqual(sa.main([]), 0)
+            self.assertEqual(sa.main(["--help"]), 0)
         finally:
             sys.stdout = old
-        self.assertIn("exit codes", out.getvalue())
+        self.assertIn("Exit codes", out.getvalue())
+
+    def test_no_args_uses_config_toml_in_cwd(self):
+        old_cwd, old_err = os.getcwd(), sys.stderr
+        with tempfile.TemporaryDirectory() as d:
+            os.chdir(d)
+            sys.stderr = io.StringIO()
+            try:
+                self.assertEqual(sa.main([]), 2)
+                self.assertIn("config.toml", sys.stderr.getvalue())
+            finally:
+                os.chdir(old_cwd)
+                sys.stderr = old_err
 
     def test_bad_flag_is_usage_error(self):
         old, sys.stderr = sys.stderr, io.StringIO()
         try:
             self.assertEqual(sa.main(["--nope"]), 2)
+            self.assertEqual(sa.main(["--email", "a@b"]), 2)
+        finally:
+            sys.stderr = old
+
+    def test_missing_config_file_is_usage_error(self):
+        old, sys.stderr = sys.stderr, io.StringIO()
+        try:
+            self.assertEqual(sa.main(["/nonexistent/config.toml"]), 2)
         finally:
             sys.stderr = old
 
 
 class ClientTests(unittest.TestCase):
     def test_bearer_token_not_sent_to_file_host(self):
-        c = sa.SmataClient("acme.my.smata.com", min_interval=0)
+        c = sa.SmataClient("acme.my.smata.com", "UTC", min_interval=0)
         c._token = "secret"
         seen = {}
 
@@ -290,7 +304,7 @@ class ClientTests(unittest.TestCase):
         self.assertNotIn("Authorization", c._files.headers)
 
     def test_accept_json_only_on_api_calls(self):
-        c = sa.SmataClient("acme.my.smata.com", min_interval=0)
+        c = sa.SmataClient("acme.my.smata.com", "UTC", min_interval=0)
         c._token = "secret"
         sent = []
 
