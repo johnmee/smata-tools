@@ -1,0 +1,1011 @@
+{
+  "documents": [
+    {
+      "id": 86933328,
+      "filename": "SP-10970---Detailed-Lift-Specifications.pdf",
+      "display_name": "SP 10970 - Detailed Lift Specifications",
+      "file_extension": "pdf",
+      "file_size": "865 KB",
+      "category": "compliance",
+      "is_invoice": false,
+      "sp_number": "SP10970",
+      "notes": null,
+      "popular": false,
+      "owner_id": 367034,
+      "owner_name": null,
+      "currently_with": null,
+      "exported_to_strata_master": false,
+      "created_at": 1773019735,
+      "updated_at": 1786595758,
+      "added_date": 1773019735,
+      "lot_number": null,
+      "source": null,
+      "priority": false,
+      "image_type": "all",
+      "is_deleted": false,
+      "lot_number_id": null,
+      "type": null,
+      "is_public": null,
+      "additional_users": [],
+      "tags": [],
+      "currently_with_user_details": [],
+      "links": {
+        "file_url": "https://s3.example.com/uploads/file_attachment/attachment/86933328/SP-10970---Detailed-Lift-Specifications.pdf",
+        "document_url": "https://my.example.com/api/v1/documents/86933328",
+        "thumb_url": "https://s3.example.com/uploads/file_attachment/attachment/86933328/thumb_SP-10970---Detailed-Lift-Specifications.jpeg",
+        "pdf_url": null
+      },
+      "user": {
+        "id": 367034,
+        "full_name": "Test Person"
+      },
+      "file_type": "file",
+      "approvers": null,
+      "attachment_approvals": [],
+      "account_documents": [],
+      "invoice_approval_v2": true,
+      "assigned_attachment_approvals": [],
+      "my_attachment_approval": null
+    },
+    {
+      "id": 96666918,
+      "filename": "Lot_19_FeeNotice202610.pdf",
+      "display_name": "Lot 19 FeeNotice202610",
+      "file_extension": "pdf",
+      "file_size": "145 KB",
+      "category": "levy notice",
+      "is_invoice": false,
+      "sp_number": "SP10970",
+      "notes": "",
+      "popular": false,
+      "owner_id": 1,
+      "owner_name": null,
+      "currently_with": null,
+      "exported_to_strata_master": false,
+      "created_at": 1787194627,
+      "updated_at": 1787194630,
+      "added_date": 1787148000,
+      "lot_number": "19",
+      "source": "StrataMasterDms",
+      "priority": false,
+      "image_type": "all",
+      "is_deleted": false,
+      "lot_number_id": 981239,
+      "type": null,
+      "is_public": null,
+      "additional_users": [],
+      "tags": [],
+      "currently_with_user_details": [],
+      "links": {
+        "file_url": "https://s3.example.com/uploads/file_attachment/attachment/96666918/Lot_19_FeeNotice202610.pdf",
+        "document_url": "https://my.example.com/api/v1/documents/96666918",
+        "thumb_url": "https://s3.example.com/uploads/file_attachment/attachment/96666918/thumb_Lot_19_FeeNotice202610.jpeg",
+        "pdf_url": null
+      },
+      "user": {
+        "id": 1,
+        "full_name": "Test Person"
+      },
+      "file_type": "file",
+      "approvers": null,
+      "attachment_approvals": [],
+      "account_documents": [],
+      "invoice_approval_v2": true,
+      "assigned_attachment_approvals": [],
+      "my_attachment_approval": null
+    },
+    {
+      "id": 86252578,
+      "filename": "Land-valuation-2026.PDF",
+      "display_name": "Land valuation 2026",
+      "file_extension": "pdf",
+      "file_size": "208 KB",
+      "category": "valuation",
+      "is_invoice": false,
+      "sp_number": "SP10970",
+      "notes": null,
+      "popular": false,
+      "owner_id": 364030,
+      "owner_name": null,
+      "currently_with": null,
+      "exported_to_strata_master": false,
+      "created_at": 1771975980,
+      "updated_at": 1771975980,
+      "added_date": 1771975980,
+      "lot_number": null,
+      "source": null,
+      "priority": false,
+      "image_type": "all",
+      "is_deleted": false,
+      "lot_number_id": null,
+      "type": null,
+      "is_public": null,
+      "additional_users": [],
+      "tags": [],
+      "currently_with_user_details": [],
+      "links": {
+        "file_url": "https://s3.example.com/uploads/file_attachment/attachment/86252578/Land-valuation-2026.PDF",
+        "document_url": "https://my.example.com/api/v1/documents/86252578",
+        "thumb_url": "https://s3.example.com/uploads/file_attachment/attachment/86252578/thumb_Land-valuation-2026.jpeg",
+        "pdf_url": null
+      },
+      "user": {
+        "id": 364030,
+        "full_name": "Test Person"
+      },
+      "file_type": "file",
+      "approvers": null,
+      "attachment_approvals": [],
+      "account_documents": [],
+      "invoice_approval_v2": true,
+      "assigned_attachment_approvals": [],
+      "my_attachment_approval": null
+    },
+    {
+      "id": 97780829,
+      "filename": "Committee-Meeting_Notice-The-Owner_s-Corporation-SP-10970---14-9-26.pdf",
+      "display_name": "Committee Meeting_Notice-The Owner's Corporation SP 10970 - 14/9/26",
+      "file_extension": "pdf",
+      "file_size": "234 KB",
+      "category": "minute book",
+      "is_invoice": false,
+      "sp_number": "SP10970",
+      "notes": null,
+      "popular": false,
+      "owner_id": 511890,
+      "owner_name": null,
+      "currently_with": null,
+      "exported_to_strata_master": false,
+      "created_at": 1789004504,
+      "updated_at": 1789004508,
+      "added_date": 1789004504,
+      "lot_number": null,
+      "source": null,
+      "priority": false,
+      "image_type": "all",
+      "is_deleted": false,
+      "lot_number_id": null,
+      "type": null,
+      "is_public": null,
+      "additional_users": [],
+      "tags": [],
+      "currently_with_user_details": [],
+      "links": {
+        "file_url": "https://s3.example.com/uploads/file_attachment/attachment/97780829/Committee-Meeting_Notice-The-Owner_s-Corporation-SP-10970---14-9-26.pdf",
+        "document_url": "https://my.example.com/api/v1/documents/97780829",
+        "thumb_url": "https://s3.example.com/uploads/file_attachment/attachment/97780829/thumb_Committee-Meeting_Notice-The-Owner_s-Corporation-SP-10970---14-9-26.jpeg",
+        "pdf_url": null
+      },
+      "user": {
+        "id": 511890,
+        "full_name": "Test Person"
+      },
+      "file_type": "file",
+      "approvers": null,
+      "attachment_approvals": [],
+      "account_documents": [],
+      "invoice_approval_v2": true,
+      "assigned_attachment_approvals": [],
+      "my_attachment_approval": null
+    },
+    {
+      "id": 87213931,
+      "filename": "EGM_Minutes_-_27022026.pdf",
+      "display_name": "EGM Minutes 27022026",
+      "file_extension": "pdf",
+      "file_size": "313 KB",
+      "category": "minute book",
+      "is_invoice": false,
+      "sp_number": "SP10970",
+      "notes": "",
+      "popular": false,
+      "owner_id": 1,
+      "owner_name": null,
+      "currently_with": null,
+      "exported_to_strata_master": false,
+      "created_at": 1773699250,
+      "updated_at": 1778128036,
+      "added_date": 1773666000,
+      "lot_number": null,
+      "source": "StrataMasterDms",
+      "priority": false,
+      "image_type": "all",
+      "is_deleted": false,
+      "lot_number_id": null,
+      "type": null,
+      "is_public": null,
+      "additional_users": [],
+      "tags": [],
+      "currently_with_user_details": [],
+      "links": {
+        "file_url": "https://s3.example.com/uploads/file_attachment/attachment/87213931/EGM_Minutes_-_27022026.pdf",
+        "document_url": "https://my.example.com/api/v1/documents/87213931",
+        "thumb_url": "https://s3.example.com/uploads/file_attachment/attachment/87213931/thumb_EGM_Minutes_-_27022026.jpeg",
+        "pdf_url": null
+      },
+      "user": {
+        "id": 1,
+        "full_name": "Test Person"
+      },
+      "file_type": "file",
+      "approvers": null,
+      "attachment_approvals": [],
+      "account_documents": [],
+      "invoice_approval_v2": true,
+      "assigned_attachment_approvals": [],
+      "my_attachment_approval": null
+    }
+  ],
+  "invoices": [
+    {
+      "id": 83523366,
+      "filename": "origin-statement-2026-01-18.pdf",
+      "display_name": "origin-statement-2026-01-18",
+      "file_extension": "pdf",
+      "file_size": "229 KB",
+      "category": "invoice",
+      "is_invoice": true,
+      "sp_number": "SP10970",
+      "notes": null,
+      "popular": false,
+      "owner_id": 367038,
+      "owner_name": null,
+      "currently_with": null,
+      "exported_to_strata_master": true,
+      "created_at": 1768794557,
+      "updated_at": 1768952081,
+      "added_date": 1768794557,
+      "lot_number": null,
+      "source": null,
+      "priority": false,
+      "image_type": "all",
+      "is_deleted": false,
+      "lot_number_id": null,
+      "type": null,
+      "is_public": null,
+      "invoice": {
+        "id": 13132794,
+        "invoiced_price": 564.18,
+        "invoice_number": "118085727",
+        "payment_terms": null,
+        "payment_method": "bpay",
+        "status": "paid",
+        "date": 1768780800,
+        "due_date": null,
+        "schedule_date": null,
+        "payment_date": 1768953600,
+        "invoice_line_items": [
+          {
+            "id": 3973317,
+            "description": "Electricity Usage - 15/10/25 - 15/01/26",
+            "gst": 51.29,
+            "amount": 564.18,
+            "gl_code": "190200-Utility--Electricity",
+            "gl_code_prefix": "Admin",
+            "group_code": "None"
+          }
+        ],
+        "is_duplicated": false,
+        "duplicate": null,
+        "ready_for_approval": true,
+        "invoice_funding": {}
+      },
+      "job": {},
+      "contractor": {
+        "id": 7448,
+        "name": "Origin Energy (130112)",
+        "abn": "22078868425",
+        "abn_invalid": false,
+        "active_external_resource_organisation_ids": [
+          6,
+          12,
+          9,
+          31,
+          33,
+          34,
+          16,
+          45,
+          46,
+          53,
+          8,
+          68,
+          65,
+          11,
+          77,
+          78,
+          96,
+          105,
+          97,
+          113,
+          110,
+          120,
+          118,
+          1,
+          146,
+          152,
+          59,
+          112,
+          176,
+          179,
+          188,
+          193,
+          199,
+          205,
+          206,
+          207,
+          211
+        ]
+      },
+      "additional_users": [
+        {
+          "id": 367033,
+          "full_name": "Test Person"
+        }
+      ],
+      "currently_with_user_details": [],
+      "links": {
+        "file_url": "https://s3.example.com/uploads/file_attachment/attachment/83523366/origin-statement-2026-01-18.pdf",
+        "document_url": "https://my.example.com/api/v1/documents/83523366",
+        "thumb_url": "https://s3.example.com/uploads/file_attachment/attachment/83523366/thumb_origin-statement-2026-01-18.jpeg",
+        "pdf_url": null
+      },
+      "user": {
+        "id": 367038,
+        "full_name": "Test Person"
+      },
+      "file_type": "file",
+      "approvers": null,
+      "attachment_approvals": [
+        {
+          "id": 16025991,
+          "user_id": 367033,
+          "status": "approved",
+          "role": "approver",
+          "approval_order": 0,
+          "last_assigned_at": null,
+          "user": {
+            "id": 367033,
+            "email": "user@example.com",
+            "first_name": "Test Person",
+            "last_name": "Test Person",
+            "full_name": "Test Person",
+            "role": "strata_manager",
+            "initials": "CC"
+          }
+        },
+        {
+          "id": 16025992,
+          "user_id": 391062,
+          "status": "approved",
+          "role": "approver",
+          "approval_order": 2,
+          "last_assigned_at": null,
+          "user": {
+            "id": 391062,
+            "email": "user@example.com",
+            "first_name": "Test Person",
+            "last_name": "Test Person",
+            "full_name": "Test Person",
+            "role": "strata_member",
+            "initials": "JM"
+          }
+        }
+      ],
+      "account_documents": [],
+      "invoice_approval_v2": true,
+      "assigned_attachment_approvals": [],
+      "my_attachment_approval": {
+        "id": 16025992,
+        "user_id": 391062,
+        "status": "approved",
+        "role": "approver",
+        "approval_order": 2,
+        "last_assigned_at": null,
+        "user": {
+          "id": 391062,
+          "email": "user@example.com",
+          "first_name": "Test Person",
+          "last_name": "Test Person",
+          "full_name": "Test Person",
+          "role": "strata_member",
+          "initials": "JM"
+        }
+      }
+    },
+    {
+      "id": 81837176,
+      "filename": "MBM_Invoice_I-069124.pdf",
+      "display_name": "MBM_Invoice_I-069124",
+      "file_extension": "pdf",
+      "file_size": "93.6 KB",
+      "category": "invoice",
+      "is_invoice": true,
+      "sp_number": "SP10970",
+      "notes": null,
+      "popular": false,
+      "owner_id": 367038,
+      "owner_name": null,
+      "currently_with": null,
+      "exported_to_strata_master": true,
+      "created_at": 1765264924,
+      "updated_at": 1765788988,
+      "added_date": 1765264924,
+      "lot_number": null,
+      "source": null,
+      "priority": false,
+      "image_type": "all",
+      "is_deleted": false,
+      "lot_number_id": null,
+      "type": null,
+      "is_public": null,
+      "invoice": {
+        "id": 12825057,
+        "invoiced_price": 7150.0,
+        "invoice_number": "069124",
+        "payment_terms": null,
+        "payment_method": "eft",
+        "status": "paid",
+        "date": 1764460800,
+        "due_date": null,
+        "schedule_date": null,
+        "payment_date": 1765843200,
+        "invoice_line_items": [
+          {
+            "id": 3819014,
+            "description": "Quantity Surveyor Fees",
+            "gst": 650.0,
+            "amount": 7150.0,
+            "gl_code": "264200-Maint Bldg--Consultants",
+            "gl_code_prefix": "CW",
+            "group_code": "None"
+          }
+        ],
+        "is_duplicated": false,
+        "duplicate": null,
+        "ready_for_approval": true,
+        "invoice_funding": {}
+      },
+      "job": {},
+      "contractor": {
+        "id": 883,
+        "name": "MBMpl Pty Ltd",
+        "abn": "74099962231",
+        "abn_invalid": false,
+        "active_external_resource_organisation_ids": [
+          1,
+          2,
+          16,
+          33,
+          52,
+          43,
+          94,
+          100,
+          99,
+          128,
+          65,
+          141,
+          123,
+          96,
+          167,
+          81,
+          171,
+          176,
+          59,
+          190,
+          114,
+          186,
+          82,
+          130
+        ]
+      },
+      "additional_users": [
+        {
+          "id": 367033,
+          "full_name": "Test Person"
+        }
+      ],
+      "currently_with_user_details": [],
+      "links": {
+        "file_url": "https://s3.example.com/uploads/file_attachment/attachment/81837176/MBM_Invoice_I-069124.pdf",
+        "document_url": "https://my.example.com/api/v1/documents/81837176",
+        "thumb_url": "https://s3.example.com/uploads/file_attachment/attachment/81837176/thumb_MBM_Invoice_I-069124.jpeg",
+        "pdf_url": null
+      },
+      "user": {
+        "id": 367038,
+        "full_name": "Test Person"
+      },
+      "file_type": "file",
+      "approvers": null,
+      "attachment_approvals": [
+        {
+          "id": 14319530,
+          "user_id": 391062,
+          "status": "approved",
+          "role": "approver",
+          "approval_order": 2,
+          "last_assigned_at": null,
+          "user": {
+            "id": 391062,
+            "email": "user@example.com",
+            "first_name": "Test Person",
+            "last_name": "Test Person",
+            "full_name": "Test Person",
+            "role": "strata_member",
+            "initials": "JM"
+          }
+        },
+        {
+          "id": 14319529,
+          "user_id": 367033,
+          "status": "approved",
+          "role": "approver",
+          "approval_order": 0,
+          "last_assigned_at": null,
+          "user": {
+            "id": 367033,
+            "email": "user@example.com",
+            "first_name": "Test Person",
+            "last_name": "Test Person",
+            "full_name": "Test Person",
+            "role": "strata_manager",
+            "initials": "CC"
+          }
+        }
+      ],
+      "account_documents": [],
+      "invoice_approval_v2": true,
+      "assigned_attachment_approvals": [],
+      "my_attachment_approval": {
+        "id": 14319530,
+        "user_id": 391062,
+        "status": "approved",
+        "role": "approver",
+        "approval_order": 2,
+        "last_assigned_at": null,
+        "user": {
+          "id": 391062,
+          "email": "user@example.com",
+          "first_name": "Test Person",
+          "last_name": "Test Person",
+          "full_name": "Test Person",
+          "role": "strata_member",
+          "initials": "JM"
+        }
+      }
+    },
+    {
+      "id": 83416086,
+      "filename": "Invoice-INV-0994.pdf",
+      "display_name": "Invoice INV-0994",
+      "file_extension": "pdf",
+      "file_size": "26.2 KB",
+      "category": "invoice",
+      "is_invoice": true,
+      "sp_number": "SP10970",
+      "notes": null,
+      "popular": false,
+      "owner_id": 367038,
+      "owner_name": null,
+      "currently_with": null,
+      "exported_to_strata_master": true,
+      "created_at": 1768537467,
+      "updated_at": 1768612103,
+      "added_date": 1768537467,
+      "lot_number": null,
+      "source": null,
+      "priority": false,
+      "image_type": "all",
+      "is_deleted": false,
+      "lot_number_id": null,
+      "type": null,
+      "is_public": null,
+      "invoice": {
+        "id": 13107687,
+        "invoiced_price": 925.65,
+        "invoice_number": "0994",
+        "payment_terms": null,
+        "payment_method": "eft",
+        "status": "paid",
+        "date": 1768435200,
+        "due_date": null,
+        "schedule_date": null,
+        "payment_date": 1768953600,
+        "invoice_line_items": [
+          {
+            "id": 3966747,
+            "description": "Cleaning - Jan 26",
+            "gst": 84.15,
+            "amount": 925.65,
+            "gl_code": "163000-Maint Bldg--Cleaning",
+            "gl_code_prefix": "Admin",
+            "group_code": "None"
+          }
+        ],
+        "is_duplicated": false,
+        "duplicate": null,
+        "ready_for_approval": true,
+        "invoice_funding": {}
+      },
+      "job": {},
+      "contractor": {
+        "id": 165648,
+        "name": "TDL Trading Pty Ltd",
+        "abn": "34683482886",
+        "abn_invalid": false,
+        "active_external_resource_organisation_ids": [
+          1,
+          176,
+          107,
+          89,
+          16,
+          103,
+          190
+        ]
+      },
+      "additional_users": [
+        {
+          "id": 367033,
+          "full_name": "Test Person"
+        }
+      ],
+      "currently_with_user_details": [],
+      "links": {
+        "file_url": "https://s3.example.com/uploads/file_attachment/attachment/83416086/Invoice-INV-0994.pdf",
+        "document_url": "https://my.example.com/api/v1/documents/83416086",
+        "thumb_url": "https://s3.example.com/uploads/file_attachment/attachment/83416086/thumb_Invoice-INV-0994.jpeg",
+        "pdf_url": null
+      },
+      "user": {
+        "id": 367038,
+        "full_name": "Test Person"
+      },
+      "file_type": "file",
+      "approvers": null,
+      "attachment_approvals": [
+        {
+          "id": 15937911,
+          "user_id": 367033,
+          "status": "approved",
+          "role": "approver",
+          "approval_order": 0,
+          "last_assigned_at": null,
+          "user": {
+            "id": 367033,
+            "email": "user@example.com",
+            "first_name": "Test Person",
+            "last_name": "Test Person",
+            "full_name": "Test Person",
+            "role": "strata_manager",
+            "initials": "CC"
+          }
+        },
+        {
+          "id": 15937912,
+          "user_id": 391062,
+          "status": "approved",
+          "role": "approver",
+          "approval_order": 2,
+          "last_assigned_at": null,
+          "user": {
+            "id": 391062,
+            "email": "user@example.com",
+            "first_name": "Test Person",
+            "last_name": "Test Person",
+            "full_name": "Test Person",
+            "role": "strata_member",
+            "initials": "JM"
+          }
+        }
+      ],
+      "account_documents": [],
+      "invoice_approval_v2": true,
+      "assigned_attachment_approvals": [],
+      "my_attachment_approval": {
+        "id": 15937912,
+        "user_id": 391062,
+        "status": "approved",
+        "role": "approver",
+        "approval_order": 2,
+        "last_assigned_at": null,
+        "user": {
+          "id": 391062,
+          "email": "user@example.com",
+          "first_name": "Test Person",
+          "last_name": "Test Person",
+          "full_name": "Test Person",
+          "role": "strata_member",
+          "initials": "JM"
+        }
+      }
+    },
+    {
+      "id": 80121744,
+      "filename": "2025-10-20-Rise-Windreport-Invoice-3520.pdf",
+      "display_name": "2025-10-20-Rise-Windreport-Invoice-3520",
+      "file_extension": "pdf",
+      "file_size": "104 KB",
+      "category": "invoice",
+      "is_invoice": true,
+      "sp_number": "SP10970",
+      "notes": null,
+      "popular": false,
+      "owner_id": 367038,
+      "owner_name": null,
+      "currently_with": null,
+      "exported_to_strata_master": true,
+      "created_at": 1762319974,
+      "updated_at": 1762590921,
+      "added_date": 1762319974,
+      "lot_number": null,
+      "source": null,
+      "priority": false,
+      "image_type": "all",
+      "is_deleted": false,
+      "lot_number_id": null,
+      "type": null,
+      "is_public": null,
+      "invoice": {
+        "id": 12609779,
+        "invoiced_price": 3520.0,
+        "invoice_number": "10505",
+        "payment_terms": null,
+        "payment_method": "eft",
+        "status": "paid",
+        "date": 1760918400,
+        "due_date": null,
+        "schedule_date": null,
+        "payment_date": 1762732800,
+        "invoice_line_items": [
+          {
+            "id": 3652540,
+            "description": "Wind Report",
+            "gst": 320.0,
+            "amount": 3520.0,
+            "gl_code": "264200-Maint Bldg--Consultants",
+            "gl_code_prefix": "CW",
+            "group_code": "None"
+          }
+        ],
+        "is_duplicated": false,
+        "duplicate": null,
+        "ready_for_approval": true,
+        "invoice_funding": {}
+      },
+      "job": {},
+      "contractor": {
+        "id": 32675,
+        "name": "Rise Consulting Engineers Pty Ltd",
+        "abn": "98617950464",
+        "abn_invalid": false,
+        "active_external_resource_organisation_ids": [
+          1,
+          52,
+          43,
+          131,
+          176,
+          137
+        ]
+      },
+      "additional_users": [
+        {
+          "id": 367033,
+          "full_name": "Test Person"
+        }
+      ],
+      "currently_with_user_details": [],
+      "links": {
+        "file_url": "https://s3.example.com/uploads/file_attachment/attachment/80121744/2025-10-20-Rise-Windreport-Invoice-3520.pdf",
+        "document_url": "https://my.example.com/api/v1/documents/80121744",
+        "thumb_url": "https://s3.example.com/uploads/file_attachment/attachment/80121744/thumb_2025-10-20-Rise-Windreport-Invoice-3520.jpeg",
+        "pdf_url": null
+      },
+      "user": {
+        "id": 367038,
+        "full_name": "Test Person"
+      },
+      "file_type": "file",
+      "approvers": null,
+      "attachment_approvals": [
+        {
+          "id": 12577141,
+          "user_id": 367033,
+          "status": "approved",
+          "role": "approver",
+          "approval_order": 0,
+          "last_assigned_at": null,
+          "user": {
+            "id": 367033,
+            "email": "user@example.com",
+            "first_name": "Test Person",
+            "last_name": "Test Person",
+            "full_name": "Test Person",
+            "role": "strata_manager",
+            "initials": "CC"
+          }
+        },
+        {
+          "id": 12577142,
+          "user_id": 391062,
+          "status": "approved",
+          "role": "approver",
+          "approval_order": 2,
+          "last_assigned_at": null,
+          "user": {
+            "id": 391062,
+            "email": "user@example.com",
+            "first_name": "Test Person",
+            "last_name": "Test Person",
+            "full_name": "Test Person",
+            "role": "strata_member",
+            "initials": "JM"
+          }
+        }
+      ],
+      "account_documents": [],
+      "invoice_approval_v2": true,
+      "assigned_attachment_approvals": [],
+      "my_attachment_approval": {
+        "id": 12577142,
+        "user_id": 391062,
+        "status": "approved",
+        "role": "approver",
+        "approval_order": 2,
+        "last_assigned_at": null,
+        "user": {
+          "id": 391062,
+          "email": "user@example.com",
+          "first_name": "Test Person",
+          "last_name": "Test Person",
+          "full_name": "Test Person",
+          "role": "strata_member",
+          "initials": "JM"
+        }
+      }
+    },
+    {
+      "id": 81082475,
+      "filename": "Tax-Invoice---INV10562.pdf",
+      "display_name": "Tax Invoice - INV10562",
+      "file_extension": "pdf",
+      "file_size": "189 KB",
+      "category": "invoice",
+      "is_invoice": true,
+      "sp_number": "SP10970",
+      "notes": null,
+      "popular": false,
+      "owner_id": 367038,
+      "owner_name": null,
+      "currently_with": null,
+      "exported_to_strata_master": false,
+      "created_at": 1764049941,
+      "updated_at": 1764050055,
+      "added_date": 1764049941,
+      "lot_number": null,
+      "source": null,
+      "priority": false,
+      "image_type": "all",
+      "is_deleted": false,
+      "lot_number_id": null,
+      "type": null,
+      "is_public": null,
+      "invoice": {
+        "id": 12715444,
+        "invoiced_price": 3806.0,
+        "invoice_number": "10562",
+        "payment_terms": null,
+        "payment_method": "eft",
+        "status": "cancelled",
+        "date": 1763596800,
+        "due_date": null,
+        "schedule_date": null,
+        "payment_date": null,
+        "invoice_line_items": [
+          {
+            "id": 3743022,
+            "description": "Repair Specification Report",
+            "gst": 346.0,
+            "amount": 3806.0,
+            "gl_code": "164200-Maint Bldg--Consultants",
+            "gl_code_prefix": "All",
+            "group_code": "None"
+          }
+        ],
+        "is_duplicated": false,
+        "duplicate": null,
+        "ready_for_approval": true,
+        "invoice_funding": {}
+      },
+      "job": {},
+      "contractor": {
+        "id": 32675,
+        "name": "Rise Consulting Engineers Pty Ltd",
+        "abn": "98617950464",
+        "abn_invalid": false,
+        "active_external_resource_organisation_ids": [
+          1,
+          52,
+          43,
+          131,
+          176,
+          137
+        ]
+      },
+      "additional_users": [
+        {
+          "id": 367033,
+          "full_name": "Test Person"
+        }
+      ],
+      "currently_with_user_details": [],
+      "links": {
+        "file_url": "https://s3.example.com/uploads/file_attachment/attachment/81082475/Tax-Invoice---INV10562.pdf",
+        "document_url": "https://my.example.com/api/v1/documents/81082475",
+        "thumb_url": "https://s3.example.com/uploads/file_attachment/attachment/81082475/thumb_Tax-Invoice---INV10562.jpeg",
+        "pdf_url": null
+      },
+      "user": {
+        "id": 367038,
+        "full_name": "Test Person"
+      },
+      "file_type": "file",
+      "approvers": null,
+      "attachment_approvals": [
+        {
+          "id": 13489484,
+          "user_id": 367033,
+          "status": "skipped",
+          "role": "approver",
+          "approval_order": 0,
+          "last_assigned_at": null,
+          "user": {
+            "id": 367033,
+            "email": "user@example.com",
+            "first_name": "Test Person",
+            "last_name": "Test Person",
+            "full_name": "Test Person",
+            "role": "strata_manager",
+            "initials": "CC"
+          }
+        },
+        {
+          "id": 13489485,
+          "user_id": 391062,
+          "status": "skipped",
+          "role": "approver",
+          "approval_order": 2,
+          "last_assigned_at": null,
+          "user": {
+            "id": 391062,
+            "email": "user@example.com",
+            "first_name": "Test Person",
+            "last_name": "Test Person",
+            "full_name": "Test Person",
+            "role": "strata_member",
+            "initials": "JM"
+          }
+        }
+      ],
+      "account_documents": [],
+      "invoice_approval_v2": true,
+      "assigned_attachment_approvals": [],
+      "my_attachment_approval": {
+        "id": 13489485,
+        "user_id": 391062,
+        "status": "skipped",
+        "role": "approver",
+        "approval_order": 2,
+        "last_assigned_at": null,
+        "user": {
+          "id": 391062,
+          "email": "user@example.com",
+          "first_name": "Test Person",
+          "last_name": "Test Person",
+          "full_name": "Test Person",
+          "role": "strata_member",
+          "initials": "JM"
+        }
+      }
+    }
+  ]
+}
