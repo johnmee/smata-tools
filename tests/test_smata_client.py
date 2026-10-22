@@ -1,4 +1,4 @@
-"""Offline tests for SmataClient.
+"""Offline tests for the Client.
 
 Every test talks to FakeSmata (tests/fakes.py), which stands in for the HTTP layer and mimics
 the SMATA endpoints documented in smata-api.md.  OfflineTestCase fails any request that
@@ -9,13 +9,14 @@ import unittest
 
 import requests
 
-import smata_archive as sa
+from smata.client import Client, normalise_login_url
+from smata.errors import ApiError, AuthError
 from tests.fakes import TENANT, OfflineTestCase, doc
 
 
 class GuardTests(OfflineTestCase):
     def test_unattached_client_cannot_reach_the_network(self):
-        client = sa.SmataClient(TENANT, "UTC", min_interval=0, retries=0)
+        client = Client(TENANT, "UTC", min_interval=0, retries=0)
         with self.assertRaises(AssertionError):
             client.login("me@example.com", "pw")
 
@@ -23,7 +24,7 @@ class GuardTests(OfflineTestCase):
 class LoginUrlTests(unittest.TestCase):
     def test_login_url_normalised(self):
         for u in ("acme.my.smata.com", "https://acme.my.smata.com/", "https://acme.my.smata.com/users/sign_in"):
-            self.assertEqual(sa.normalise_login_url(u), "https://acme.my.smata.com/users/sign_in")
+            self.assertEqual(normalise_login_url(u), "https://acme.my.smata.com/users/sign_in")
 
 
 class LoginTests(OfflineTestCase):
@@ -34,18 +35,18 @@ class LoginTests(OfflineTestCase):
 
     def test_wrong_password_is_auth_error(self):
         server, client = self.make()
-        with self.assertRaisesRegex(sa.AuthError, "login failed"):
+        with self.assertRaisesRegex(AuthError, "login failed"):
             client.login(server.email, "wrong")
 
     def test_page_without_csrf_token_is_auth_error(self):
         server, client = self.make()
         server.login_page = "<html>not a SMATA login page</html>"
-        with self.assertRaisesRegex(sa.AuthError, "authenticity_token"):
+        with self.assertRaisesRegex(AuthError, "authenticity_token"):
             client.login(server.email, server.password)
 
     def test_api_call_before_login_is_auth_error(self):
         _, client = self.make([doc(1)])
-        with self.assertRaises(sa.AuthError):
+        with self.assertRaises(AuthError):
             client.get_json("/v1/documents/1")
 
     def test_rejected_session_logs_in_again(self):
@@ -99,14 +100,14 @@ class RetryTests(OfflineTestCase):
     def test_retries_exhausted_is_api_error(self):
         server, client = self.logged_in([doc(1)], retries=2)
         server.fail("/v1/documents/1", [503] * 5)
-        with self.assertRaises(sa.ApiError) as cm:
+        with self.assertRaises(ApiError) as cm:
             client.get_json("/v1/documents/1")
         self.assertEqual(cm.exception.status, 503)
         self.assertEqual(server.count("GET", "/v1/documents/1"), 3)
 
     def test_not_found_is_not_retried(self):
         server, client = self.logged_in()
-        with self.assertRaises(sa.ApiError) as cm:
+        with self.assertRaises(ApiError) as cm:
             client.get_json("/v1/documents/99")
         self.assertEqual(cm.exception.status, 404)
         self.assertEqual(server.count("GET", "/v1/documents/99"), 1)
@@ -123,10 +124,29 @@ class DownloadTests(OfflineTestCase):
 
     def test_missing_file_is_api_error(self):
         _, client = self.logged_in()
-        with self.assertRaises(sa.ApiError) as cm:
+        with self.assertRaises(ApiError) as cm:
             client.download("https://s3.example/gone.pdf", self.tmp / "gone.pdf")
         self.assertEqual(cm.exception.status, 404)
         self.assertFalse((self.tmp / "gone.pdf").exists())
+
+
+class CompatTests(unittest.TestCase):
+    """The package re-export keeps the old one-module import style working."""
+
+    def test_smata_archive_is_an_alias(self):
+        from smata.client import Client as Direct
+
+        self.assertIs(Direct, Client)
+
+    def test_public_api_is_importable_from_the_package(self):
+        from smata import Archive, load_config, open_store, resolve_config
+        from smata import Client as PackageClient
+
+        self.assertIs(PackageClient, Client)
+        self.assertTrue(callable(Archive))
+        self.assertTrue(callable(load_config))
+        self.assertTrue(callable(resolve_config))
+        self.assertTrue(callable(open_store))
 
 
 if __name__ == "__main__":

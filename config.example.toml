@@ -4,5 +4,5 @@ email = "me@example.com"
 password = "<password>"         # if omitted you are prompted.
 
 # Defaults
-dest = "~/smata-files"
 timezone = "Australia/Sydney"
+dest = "~/smata-files"

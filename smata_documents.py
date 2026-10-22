@@ -15,22 +15,24 @@ import json
 import sys
 from pathlib import Path
 
-import smata_archive as sa
+from smata.client import SmataClient
+from smata.config import DEFAULT_CONFIG, load_config, resolve_config, resolve_password
+from smata.errors import AuthError, ConfigError, SmataError
 
 
 def fetch_documents(config_path: Path) -> dict:
     """Logs in using the config file and returns the JSON from GET /v1/documents."""
-    config = sa.resolve_config(sa.load_config(config_path))
-    password = sa.resolve_password(config)
-    client = sa.SmataClient(config.login_url, timezone=config.timezone)
+    config = resolve_config(load_config(config_path))
+    password = resolve_password(config)
+    client = SmataClient(config.login_url, timezone=config.timezone)
     client.login(config.email, password)
     return client.get_json("/v1/documents", time_zone=client.timezone)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Print the response of GET /v1/documents as JSON.")
-    parser.add_argument("config", nargs="?", type=Path, default=sa.DEFAULT_CONFIG, metavar="CONFIG",
-                        help=f"TOML config file (default: {sa.DEFAULT_CONFIG})")
+    parser.add_argument("config", nargs="?", type=Path, default=DEFAULT_CONFIG, metavar="CONFIG",
+                        help=f"TOML config file (default: {DEFAULT_CONFIG})")
     try:
         args = parser.parse_args(argv)
     except SystemExit as e:
@@ -38,13 +40,13 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         response = fetch_documents(args.config)
-    except sa.ConfigError as e:
+    except ConfigError as e:
         print(f"smata-documents: {e}", file=sys.stderr)
         return 2
-    except sa.AuthError as e:
+    except AuthError as e:
         print(f"smata-documents: {e}", file=sys.stderr)
         return 3
-    except sa.SmataError as e:
+    except SmataError as e:
         print(f"smata-documents: {e}", file=sys.stderr)
         return 1
 

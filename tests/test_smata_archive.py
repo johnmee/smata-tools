@@ -1,19 +1,15 @@
 """Offline tests for Archive and DocumentsSource. Run with `python -m unittest` or `pytest`.
 
-Sync tests run a real SmataClient and Archive against FakeSmata (tests/fakes.py), so they cover
+Sync tests run a real Client and Archive against FakeSmata (tests/fakes.py), so they cover
 login, pagination and downloads as well as the archive logic.  All data is fake.
 """
 
 import json
 import os
-import sys
 import unittest
-from pathlib import Path
 from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-import smata_archive as sa
+from smata.archive import FILENAME_RE, Archive, DocumentsSource
 from tests.fakes import T0, OfflineTestCase, doc
 
 MINUTES_1 = "documents/2023-11-14-Minutes-1.pdf"
@@ -22,24 +18,24 @@ MINUTES_2 = "documents/2023-11-14-Minutes-2.pdf"
 
 class FilenameTests(unittest.TestCase):
     def test_main_filename(self):
-        src = sa.DocumentsSource()
+        src = DocumentsSource()
         self.assertEqual(src.main_filename(doc(42, category="Levy/Notice")), "2023-11-14-Levy-Notice-42.pdf")
         self.assertEqual(src.main_filename(doc(42, category=None)), "2023-11-14-uncategorised-42.pdf")
 
     def test_variant_and_attachment_names_never_parse_as_documents(self):
         d = doc(42, links={"file_url": "u1", "original_file_url": "https://x/o.docx", "pdf_url": "https://x/p.pdf"},
                 invoice={"attachments": [{"id": 777, "file_url": "https://x/a.jpg", "file_extension": "jpg"}]})
-        files = sa.DocumentsSource().files(d, None)
+        files = DocumentsSource().files(d, None)
         names = {k: n for k, _, n in files}
         self.assertEqual(names, {"file": "2023-11-14-Minutes-42.pdf", "original": "2023-11-14-Minutes-42-original.docx",
                                  "pdf": "2023-11-14-Minutes-42-pdf.pdf", "att777": "2023-11-14-Minutes-42-att777.jpg"})
         for k, n in names.items():
             if k != "file":
-                self.assertIsNone(sa.FILENAME_RE.match(n), n)
+                self.assertIsNone(FILENAME_RE.match(n), n)
 
     def test_variants_follow_existing_main_name(self):
         d = doc(42, category="Renamed", links={"file_url": "u", "pdf_url": "p"})
-        names = [n for _, _, n in sa.DocumentsSource().files(d, "2020-01-01-Old-42.pdf")]
+        names = [n for _, _, n in DocumentsSource().files(d, "2020-01-01-Old-42.pdf")]
         self.assertEqual(names, ["2020-01-01-Old-42.pdf", "2020-01-01-Old-42-pdf.pdf"])
 
 
@@ -54,7 +50,7 @@ class SyncTests(OfflineTestCase):
         return self.server, self.client
 
     def sync(self, **kw):
-        return sa.Archive(self.dest).sync(self.client, **kw)
+        return Archive(self.dest).sync(self.client, **kw)
 
     def metadata(self):
         return json.loads((self.dest / "metadata" / "documents.json").read_text())

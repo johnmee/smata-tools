@@ -1,4 +1,4 @@
-"""Tests for the SQLite document store in smata_db.py, using in-memory databases.
+"""Tests for the SQLite document store in smata/storage.py, using in-memory databases.
 
 The input records are in tests/sample_documents.json: 5 documents and 5 invoices chosen at random
 from saved GET /v1/documents responses, with emails, person names and SMATA hosts replaced.
@@ -7,14 +7,11 @@ from saved GET /v1/documents responses, with emails, person names and SMATA host
 import copy
 import json
 import sqlite3
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-import smata_db as db
+import smata.storage as db
 
 SAMPLE_FILE = Path(__file__).with_name("sample_documents.json")
 _sample = json.loads(SAMPLE_FILE.read_text(encoding="utf-8"))

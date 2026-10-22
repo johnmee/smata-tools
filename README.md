@@ -6,16 +6,7 @@ Download all the files from the SMATA strata document system.
 
 Clone the repository into a python environment.
 
-✗  uv tree
-Using CPython 3.14.3
-Resolved 6 packages in 257ms
-smata-archive v0.1.0
-└── requests v2.34.2
-    ├── certifi v2026.10.18
-    ├── charset-normalizer v3.5.2
-    ├── idna v3.20
-    └── urllib3 v2.8.0
-
+    uv sync
 
 ## USAGE
 
@@ -61,8 +52,44 @@ Output: it prints N would download files, N updated, N gone, N recovered, N erro
 Caveat: because detail isn't saved on a dry run, the next dry run (or real run) fetches it again. On a fresh archive, a dry run makes one detail request per document, so it isn't cheap.
 
 
+## CODE LAYOUT
+
+The library is the `smata` package. The files in the project root are thin command lines over it.
+
+    smata/
+      __init__.py   the public API, re-exported from the modules below
+      version.py    __version__
+      errors.py     SmataError, AuthError, ApiError, ConfigError
+      config.py     Config, load_config, resolve_config, resolve_password
+      client.py     SmataClient (login, pagination, download)
+      storage.py    the SQLite store: create_database, add/update/get/mark_downloaded
+      archive.py    Archive, DocumentsSource, SyncResult, MetadataFile
+      cli.py        argparse and exit codes for smata-archive
+      schema.sql    the store's DDL, shipped as package data
+
+    smata_archive.py     the smata-archive command
+    smata_documents.py   a one-page GET /v1/documents probe
+
+Modules only import from below them (`errors`, then `config`, then `client`, then `storage`
+and `archive`, then `cli`), so the dependency graph is a chain and not a cycle.
+`tests/test_package.py` asserts that layering.
+
+Programmatic use:
+
+    from smata import Archive, Client, load_config, resolve_config
+
+    config = resolve_config(load_config(Path("config.toml")))
+    client = Client(config.login_url, timezone=config.timezone)
+    client.login(config.email, resolve_password(config))
+    result = Archive(config.dest).sync(client)
+
+
 ## DEVELOPMENT
 
 ### Tests
 
-> uv run python -m unittest tests/test_smata_archive.py
+    uv run python -m unittest discover -s tests -t .
+
+Everything runs against `tests/fakes.py`, a fake SMATA server, so the suite never touches
+the real site or the network.
+

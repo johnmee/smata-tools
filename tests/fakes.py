@@ -1,22 +1,21 @@
 """Fakes shared by the offline test files.
 
 FakeSmata stands in for the HTTP layer: the SMATA login form, JSON API and public file host.
-OfflineTestCase wires a real SmataClient to it and makes any request that escapes the fake
+OfflineTestCase wires a real Client to it and makes any request that escapes the fake
 fail the test, so nothing can reach the real SMATA host.
 """
 
 import re
-import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
 
 import requests
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-import smata_archive as sa
+from smata.archive import deep_merge
+from smata.client import Client
 
 T0 = 1_700_000_000  # 2023-11-14
 TENANT = "https://acme.my.smata.com"
@@ -86,7 +85,7 @@ class FakeSmata:
         self._failures: dict[str, list[int]] = {}
         self._session: requests.Session | None = None
 
-    def attach(self, client: sa.SmataClient) -> sa.SmataClient:
+    def attach(self, client: Client) -> Client:
         self._session = client._api
         setattr(client._api, "request", self._api_request)  # noqa: B010
         setattr(client._files, "request", self._file_request)  # noqa: B010
@@ -155,7 +154,7 @@ class FakeSmata:
                 return FakeResponse(404, body={"error": "Attachment Not Found"})
             for d in self.docs:
                 if d["id"] == id:
-                    return FakeResponse(body=sa.deep_merge(d, self.details.get(id, {})))
+                    return FakeResponse(body=deep_merge(d, self.details.get(id, {})))
             return FakeResponse(404, body={"error": "not found"})
         raise AssertionError(f"FakeSmata has no route for {path}")
 
@@ -177,7 +176,7 @@ class OfflineTestCase(unittest.TestCase):
         guard = mock.patch.object(requests.Session, "request", side_effect=AssertionError("real network request"))
         guard.start()
         self.addCleanup(guard.stop)
-        sleep = mock.patch.object(sa.time, "sleep")
+        sleep = mock.patch.object(time, "sleep")
         self.sleep = sleep.start()
         self.addCleanup(sleep.stop)
         self._tmp = tempfile.TemporaryDirectory()
@@ -186,7 +185,7 @@ class OfflineTestCase(unittest.TestCase):
 
     def make(self, docs=(), **client_kw):
         server = FakeSmata(docs)
-        client = server.attach(sa.SmataClient(TENANT, "UTC", min_interval=0, **client_kw))
+        client = server.attach(Client(TENANT, "UTC", min_interval=0, **client_kw))
         return server, client
 
     def logged_in(self, docs=(), **client_kw):

@@ -11,7 +11,11 @@ license = { text = "MIT" }
 dependencies = ["requests>=2.28"]
 
 [project.scripts]
-smata-archive = "smata_archive:main"
+smata-archive = "smata.cli:main"
 
 [tool.setuptools]
-py-modules = ["smata_archive"]
+packages = ["smata"]
+
+[tool.setuptools.package-data]
+smata = ["schema.sql"]
+

@@ -1,12 +1,34 @@
-"""SQLite storage for the documents listed by GET /v1/documents (see schema.sql)."""
+"""SQLite storage for the documents listed by GET /v1/documents (see schema.sql).
+
+The store keeps the raw listing record verbatim plus a few promoted columns, and
+records `first_seen`/`last_seen`.  Nothing is ever deleted: a document that stops
+being listed is simply absent from later listings, so its `last_seen` stops moving.
+
+This module has no imports from the rest of the package, so it can be used on its own:
+
+    from smata.storage import create_database
+
+    conn = create_database("smata-files/smata.db")
+    create_database(":memory:")
+"""
 from __future__ import annotations
 
 import json
 import sqlite3
 import time
+from importlib import resources
 from pathlib import Path
 
 SCHEMA_FILE = Path(__file__).with_name("schema.sql")
+
+
+def schema_sql() -> str:
+    """The schema DDL.  Reads from package data so an installed copy works too."""
+    try:
+        return resources.files("smata").joinpath("schema.sql").read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError, AttributeError):
+        # A source tree that predates the package data entry, or a zip import.
+        return SCHEMA_FILE.read_text(encoding="utf-8")
 
 
 def create_database(path: str | Path) -> sqlite3.Connection:
@@ -14,8 +36,12 @@ def create_database(path: str | Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='documents'").fetchone()
     if not exists:
-        conn.executescript(SCHEMA_FILE.read_text(encoding="utf-8"))
+        conn.executescript(schema_sql())
     return conn
+
+
+#: Alias for callers that prefer the verb to describe what they get back.
+open_store = create_database
 
 
 def _listing_fields(item: dict) -> dict:
