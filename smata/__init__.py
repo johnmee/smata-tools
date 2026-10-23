@@ -26,7 +26,7 @@ Programmatic use:
 from __future__ import annotations
 
 from smata.archive import Archive, DocumentsSource, SyncResult
-from smata.client import Client, SmataClient
+from smata.client import DEFAULT_SESSION_PATH, Client, SmataClient
 from smata.config import Config, load_config, resolve_config, resolve_password
 from smata.errors import ApiError, AuthError, ConfigError, SmataError
 from smata.storage import create_database, get_document, mark_downloaded, open_store
@@ -39,6 +39,7 @@ __all__ = [
     "Client",
     "Config",
     "ConfigError",
+    "DEFAULT_SESSION_PATH",
     "DocumentsSource",
     "SmataClient",
     "SmataError",

@@ -182,6 +182,12 @@ class OfflineTestCase(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.tmp = Path(self._tmp.name)
+        self._cache_tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._cache_tmp.cleanup)
+        self.session_file = Path(self._cache_tmp.name) / "session.json"
+        session_patch = mock.patch("smata.client.DEFAULT_SESSION_PATH", self.session_file)
+        session_patch.start()
+        self.addCleanup(session_patch.stop)
 
     def make(self, docs=(), **client_kw):
         server = FakeSmata(docs)

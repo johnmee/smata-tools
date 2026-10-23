@@ -5,6 +5,7 @@ the SMATA endpoints documented in smata-api.md.  OfflineTestCase fails any reque
 escapes the fake, so nothing can reach the real SMATA host.
 """
 
+import json
 import unittest
 
 import requests
@@ -54,6 +55,71 @@ class LoginTests(OfflineTestCase):
         server.expire_tokens()
         self.assertEqual(client.get_json("/v1/documents/1")["id"], 1)
         self.assertEqual(server.logins, 2)
+
+
+class SessionTokenReuseTests(OfflineTestCase):
+    def test_login_persists_session_with_secure_permissions(self):
+        server, client = self.make([doc(1)])
+        client.login(server.email, server.password)
+        self.assertTrue(self.session_file.exists())
+        mode = self.session_file.stat().st_mode & 0o777
+        self.assertEqual(mode, 0o600)
+        data = json.loads(self.session_file.read_text())
+        self.assertEqual(data["access_token"], "tok-1")
+        self.assertEqual(data["email"], server.email)
+
+    def test_subsequent_client_reuses_cached_token_without_http_login(self):
+        server, client1 = self.make([doc(1)])
+        client1.login(server.email, server.password)
+        self.assertEqual(server.logins, 1)
+
+        client2 = server.attach(Client(TENANT, "UTC", min_interval=0, session_path=self.session_file))
+        self.assertTrue(client2.has_valid_session(server.email))
+        client2.login(server.email, server.password)
+        self.assertEqual(server.logins, 1)
+        self.assertEqual(client2.get_json("/v1/documents/1")["id"], 1)
+
+    def test_login_without_password_succeeds_when_session_cached(self):
+        server, client1 = self.make([doc(1)])
+        client1.login(server.email, server.password)
+
+        client2 = server.attach(Client(TENANT, "UTC", min_interval=0, session_path=self.session_file))
+        client2.login(server.email)
+        self.assertEqual(client2.get_json("/v1/documents/1")["id"], 1)
+
+    def test_login_without_password_fails_when_no_cached_session(self):
+        server, client = self.make()
+        with self.assertRaisesRegex(AuthError, "no password provided"):
+            client.login(server.email)
+
+    def test_rejected_cached_token_reauthenticates_and_updates_cache(self):
+        server, client1 = self.make([doc(1)])
+        client1.login(server.email, server.password)
+        self.assertEqual(server.logins, 1)
+
+        server.expire_tokens()
+
+        client2 = server.attach(Client(TENANT, "UTC", min_interval=0, session_path=self.session_file))
+        client2.login(server.email, server.password)
+        self.assertEqual(server.logins, 1)
+
+        self.assertEqual(client2.get_json("/v1/documents/1")["id"], 1)
+        self.assertEqual(server.logins, 2)
+        data = json.loads(self.session_file.read_text())
+        self.assertEqual(data["access_token"], "tok-2")
+
+    def test_clear_session_removes_from_cache(self):
+        server, client = self.make([doc(1)])
+        client.login(server.email, server.password)
+        self.assertTrue(client.has_valid_session(server.email))
+        client.clear_session()
+        self.assertFalse(client.has_valid_session(server.email))
+
+    def test_session_path_none_disables_caching(self):
+        server, client = self.make([doc(1)], session_path=None)
+        client.login(server.email, server.password)
+        self.assertFalse(self.session_file.exists())
+
 
 
 class HeaderTests(OfflineTestCase):

@@ -2,13 +2,15 @@
 
 There is no API key or OAuth flow.  The session is the web login form: fetch it for a
 Rails CSRF token, POST the credentials, and read the `access_token` cookie it sets in
-reply.  That token is sent as a bearer header on every API call.  See smata-api.md
-sections 2 and 18.
+reply.  That token is sent as a bearer header on every API call.  Tokens are cached in
+~/.cache/smata/session.json and reused across runs until expired or rejected.  See
+smata-api.md sections 2 and 18.
 
 Only GET requests are ever issued.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -35,6 +37,9 @@ LOGIN_FORM = {
     "commit": "Log in",
 }
 
+DEFAULT_SESSION_PATH = Path("~/.cache/smata/session.json").expanduser()
+_DEFAULT_SESSION = object()
+
 
 class SmataClient:
     """A client session with the SMATA JSON API.
@@ -51,7 +56,8 @@ class SmataClient:
         api_base: str = API_BASE,
         min_interval: float = 0.25,
         timeout: float = 60,
-        retries: int = 5
+        retries: int = 5,
+        session_path: Path | str | None = _DEFAULT_SESSION,
     ):
         self.login_url = normalise_login_url(login_url)
         self.timezone = timezone
@@ -59,16 +65,45 @@ class SmataClient:
         self.min_interval = min_interval
         self.timeout = timeout
         self.retries = retries
+        resolved_path = DEFAULT_SESSION_PATH if session_path is _DEFAULT_SESSION else session_path
+        self.session_path = Path(resolved_path).expanduser() if resolved_path is not None else None
         self._api = requests.Session()
         self._api.headers.update({"User-Agent": USER_AGENT})
         self._files = requests.Session()
         self._files.headers.update({"User-Agent": USER_AGENT})
         self._token: str | None = None
-        self._credentials: tuple[str, str] | None = None
+        self._credentials: tuple[str, str | None] | None = None
         self._last_request = 0.0
 
-    def login(self, email: str, password: str) -> None:
+    def has_valid_session(self, email: str) -> bool:
+        """Returns True if a valid non-expired cached session exists for this user."""
+        if not self.session_path:
+            return False
+        return load_cached_session(self.session_path, self.login_url, email) is not None
+
+    def clear_session(self, email: str | None = None) -> None:
+        """Clears in-memory credentials and the cached session file on disk."""
+        target_email = email or (self._credentials[0] if self._credentials else None)
+        self._token = None
+        self._credentials = None
+        self._api.cookies.clear()
+        if self.session_path and target_email:
+            clear_cached_session(self.session_path, self.login_url, target_email)
+
+    def login(self, email: str, password: str | None = None, *, use_cache: bool = True) -> None:
         """Logs in through the web form and keeps the access_token. Raises AuthError."""
+        if use_cache and self.session_path:
+            cached = load_cached_session(self.session_path, self.login_url, email)
+            if cached and cached.get("access_token"):
+                self._token = cached["access_token"]
+                self._credentials = (email, password)
+                self._api.cookies.set("access_token", self._token)
+                log.info("using cached session for %s", email)
+                return
+
+        if password is None:
+            raise AuthError("no password provided and no valid cached session found")
+
         try:
             page = self._request(self._api, "GET", self.login_url, api=False)
         except ApiError as e:
@@ -93,16 +128,23 @@ class SmataClient:
         self._token = token
         self._credentials = (email, password)
 
+        if self.session_path:
+            save_cached_session(self.session_path, self.login_url, email, token)
+
     def get_json(self, path: str, **params) -> Any:
         """GETs an API path (relative to /api, e.g. "/v1/documents") and returns the JSON."""
         url = path if path.startswith("http") else f"{self.api_base}/{path.lstrip('/')}"
         try:
             resp = self._request(self._api, "GET", url, api=True, params=params)
         except AuthError:
-            if not self._credentials:
+            if not self._credentials or not self._credentials[1]:
+                if self.session_path and self._credentials:
+                    clear_cached_session(self.session_path, self.login_url, self._credentials[0])
                 raise
             log.info("session rejected; logging in again")
-            self.login(*self._credentials)
+            if self.session_path:
+                clear_cached_session(self.session_path, self.login_url, self._credentials[0])
+            self.login(self._credentials[0], self._credentials[1], use_cache=False)
             resp = self._request(self._api, "GET", url, api=True, params=params)
         try:
             return resp.json()
@@ -202,3 +244,144 @@ def _retry_after(resp: requests.Response) -> float | None:
         return min(float(resp.headers.get("Retry-After", "")), 300)
     except ValueError:
         return None
+
+
+def _cache_key(login_url: str, email: str) -> str:
+    return f"{normalise_login_url(login_url)}|{email.strip().lower()}"
+
+
+def load_cached_session(session_path: Path | str, login_url: str, email: str) -> dict | None:
+    """Reads a session from the cache file if present and valid."""
+    path = Path(session_path).expanduser()
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        log.warning("could not read session cache %s: %s", path, e)
+        return None
+
+    if not isinstance(data, dict):
+        return None
+
+    key = _cache_key(login_url, email)
+    tokens = data.get("tokens")
+    entry = None
+    if isinstance(tokens, dict) and key in tokens:
+        entry = tokens[key]
+    elif key in data and isinstance(data[key], dict):
+        entry = data[key]
+    elif data.get("access_token") and (
+        not data.get("email") or data.get("email").strip().lower() == email.strip().lower()
+    ):
+        entry = data
+
+    if isinstance(entry, dict) and isinstance(entry.get("access_token"), str) and entry["access_token"]:
+        return entry
+    return None
+
+
+def save_cached_session(
+    session_path: Path | str,
+    login_url: str,
+    email: str,
+    token: str,
+) -> None:
+    """Saves a session to disk atomically with restricted 0600 permissions."""
+    path = Path(session_path).expanduser()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            path.parent.chmod(0o700)
+        except OSError:
+            pass
+
+        key = _cache_key(login_url, email)
+        norm_url = normalise_login_url(login_url)
+        clean_email = email.strip().lower()
+        now = time.time()
+
+        existing: dict = {}
+        if path.is_file():
+            try:
+                loaded = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    existing = loaded
+            except (OSError, ValueError):
+                existing = {}
+
+        tokens = existing.get("tokens")
+        if not isinstance(tokens, dict):
+            tokens = {}
+
+        entry = {
+            "access_token": token,
+            "login_url": norm_url,
+            "email": clean_email,
+            "saved_at": now,
+        }
+        tokens[key] = entry
+
+        data = {
+            "access_token": token,
+            "login_url": norm_url,
+            "email": clean_email,
+            "saved_at": now,
+            "tokens": tokens,
+        }
+
+        tmp_file = path.with_name(f"{path.name}.tmp.{os.getpid()}")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+        fd = os.open(tmp_file, flags, 0o600)
+        try:
+            with open(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            os.replace(tmp_file, path)
+        except BaseException:
+            try:
+                tmp_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
+    except Exception as e:
+        log.warning("could not save session to %s: %s", path, e)
+
+
+def clear_cached_session(session_path: Path | str, login_url: str, email: str) -> None:
+    """Removes a session entry from the cache file."""
+    path = Path(session_path).expanduser()
+    if not path.is_file():
+        return
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return
+        key = _cache_key(login_url, email)
+        tokens = data.get("tokens")
+        changed = False
+        if isinstance(tokens, dict) and key in tokens:
+            del tokens[key]
+            changed = True
+        if key in data:
+            del data[key]
+            changed = True
+        if data.get("email", "").strip().lower() == email.strip().lower():
+            data.pop("access_token", None)
+            changed = True
+        if changed:
+            tmp_file = path.with_name(f"{path.name}.tmp.{os.getpid()}")
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            fd = os.open(tmp_file, flags, 0o600)
+            try:
+                with open(fd, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+                os.replace(tmp_file, path)
+            except BaseException:
+                try:
+                    tmp_file.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise
+    except Exception as e:
+        log.warning("could not update session cache %s: %s", path, e)
+
