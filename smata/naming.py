@@ -19,7 +19,7 @@ def epoch_date(ts) -> str:
 
 
 def safe_name(text: str) -> str:
-    return re.sub(r'[/\\\x00-\x1f]', "-", text).strip() or "unnamed"
+    return re.sub(r'[/\\\x00-\x1f\s]+', "-", text.strip()).strip("-") or "unnamed"
 
 
 def url_extension(url: str, fallback: str) -> str:

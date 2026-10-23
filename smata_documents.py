@@ -5,6 +5,7 @@ Run without arguments to show the help.  The first argument is a command:
     python smata_documents.py index [config.toml] [--json]
     python smata_documents.py list [config.toml]
     python smata_documents.py download [config.toml]
+    python smata_documents.py info FILE... [-c config.toml] [--json]
 
 index loads the config (default: config.toml), fetches page 1 of GET /v1/documents, and stores
 them in <dest>/smata.db.  If smata.db does not exist, it is created using the schema; if it already
@@ -14,10 +15,14 @@ list shows all stored documents from the local database without making network r
 
 download runs index first, then saves the file of every indexed document that is not on disk into <dest>, named
 <date>-<category>-<id>.<ext>, and records local_filename and downloaded_at in the database.
+
+info prints the stored metadata of downloaded files, given as names, paths or globs; a name with no folder
+is looked up in <dest>.  --json prints the raw JSON records as a list.
 """
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import sys
 from datetime import datetime
@@ -39,6 +44,8 @@ from smata.storage import (
     DB_FILENAME,
     add_document,
     create_database,
+    get_document,
+    get_document_by_local_filename,
     list_documents,
     mark_downloaded,
     update_document,
@@ -71,8 +78,12 @@ def save_documents(config: Config, documents: list[dict]) -> tuple[int, int, Pat
     try:
         with conn:
             for doc in documents:
-                if update_document(conn, doc):
-                    updated += 1
+                stored = get_document(conn, doc["id"])
+                if stored:
+                    # Bumping last_seen alone is our own bookkeeping, not a change at SMATA.
+                    if json.loads(stored["raw"]) != doc:
+                        updated += 1
+                    update_document(conn, doc)
                 else:
                     add_document(conn, doc)
                     inserted += 1
@@ -114,6 +125,7 @@ def download_files(config: Config) -> tuple[int, list[str], int]:
                     failed.append(doc["id"])
                     continue
                 downloaded += 1
+                print(f"Downloaded {name}", flush=True)
             mark_downloaded(conn, doc["id"], name)
     finally:
         conn.close()
@@ -171,6 +183,77 @@ def list_stored_documents(config: Config, out=None) -> int:
         print("  ".join(val.ljust(widths[i]) for i, val in enumerate(row)), file=out)
     return 0
 
+def resolve_info_targets(config: Config, patterns: list[str]) -> list[Path]:
+    """Expands filenames and globs.  A bare name (no folder) is looked up in config.dest."""
+    paths: list[Path] = []
+    for pattern in patterns:
+        base = Path(pattern)
+        if base.name == pattern:
+            pattern = str(config.dest / pattern)
+        matches = sorted(glob.glob(pattern))
+        paths.extend(Path(m) for m in matches or [pattern])
+    return paths
+
+
+def format_info(doc: dict, raw: dict) -> str:
+    """Human-readable metadata for one stored document."""
+    lines = [f"{doc['local_filename']}"]
+    bookkeeping = {
+        "downloaded_at": format_local_datetime(doc["downloaded_at"]),
+        "first_seen": format_local_datetime(doc["first_seen"]),
+        "last_seen": format_local_datetime(doc["last_seen"]),
+    }
+    entries = {**bookkeeping, **raw}
+    width = max(len(k) for k in entries)
+    for key, value in entries.items():
+        if isinstance(value, int) and not isinstance(value, bool) and key.endswith(("_at", "_date")):
+            value = f"{value}  ({format_local_datetime(value)})"
+        elif key == "additional_users" and isinstance(value, list):
+            value = ", ".join(u.get("full_name", "") for u in value) or "-"
+        elif key == "links" and isinstance(value, dict):
+            value = [f"{name}: {url}" for name, url in value.items()]
+        elif isinstance(value, (dict, list)):
+            value = json.dumps(value, ensure_ascii=False)
+        if isinstance(value, list):
+            # One item per line, aligned under the value column.
+            indent = " " * (width + 4)
+            value = "\n".join(f"{indent if i else ''}{item}" for i, item in enumerate(value)) or "-"
+        lines.append(f"  {key.ljust(width)}  {value}")
+    return "\n".join(lines)
+
+
+def run_info(config: Config, patterns: list[str], show_json: bool = False) -> int:
+    """Prints the stored metadata of the named files.  Returns the exit code."""
+    db_path = config.dest / DB_FILENAME
+    if not db_path.is_file():
+        print(f"smata-documents: database not found: {db_path}", file=sys.stderr)
+        return 1
+
+    dest = config.dest.resolve()
+    found = []
+    missing = 0
+    conn = create_database(db_path)
+    try:
+        for path in resolve_info_targets(config, patterns):
+            try:
+                relative = str(path.resolve().relative_to(dest))
+            except ValueError:
+                relative = None
+            doc = get_document_by_local_filename(conn, relative) if relative else None
+            if doc is None:
+                print(f"smata-documents: no stored document for {path}", file=sys.stderr)
+                missing += 1
+                continue
+            found.append(doc)
+    finally:
+        conn.close()
+
+    if show_json:
+        json.dump([json.loads(d["raw"]) for d in found], sys.stdout, indent=2, ensure_ascii=False)
+        sys.stdout.write("\n")
+    else:
+        print("\n\n".join(format_info(d, json.loads(d["raw"])) for d in found))
+    return 1 if missing else 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -191,6 +274,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser("download", parents=[config_args],
                         help="download the files of indexed documents that are not on disk")
+
+    info = commands.add_parser("info",
+                               help="show the stored metadata of downloaded files (names or globs)")
+    info.add_argument("files", nargs="+", metavar="FILE",
+                      help="filenames or globs; a name with no folder is looked up in the destination folder")
+    info.add_argument("-c", "--config", type=Path, default=DEFAULT_CONFIG, metavar="CONFIG",
+                      help=f"TOML config file (default: {DEFAULT_CONFIG})")
+    info.add_argument("--json", action="store_true", help="print the raw JSON records")
     return parser
 
 
@@ -209,8 +300,8 @@ def run_index(config: Config, show_json: bool = False) -> int:
         print(f"smata-documents: {e}", file=sys.stderr)
         return 1
 
-    total = inserted + updated
-    print(f"Stored {total} documents ({inserted} new, {updated} updated) in {db_path}")
+    listed = len(response.get("documents") or [])
+    print(f"Indexed {listed} documents ({inserted} new, {updated} changed) in {db_path}")
     if show_json:
         json.dump(response, sys.stdout, indent=2, ensure_ascii=False)
         sys.stdout.write("\n")
@@ -236,6 +327,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "list":
         return list_stored_documents(config)
+
+    if args.command == "info":
+        return run_info(config, args.files, show_json=args.json)
 
     if args.command == "index":
         return run_index(config, show_json=args.json)

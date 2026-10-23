@@ -109,6 +109,9 @@ class SmataClient:
         if password is None:
             raise AuthError("no password provided and no valid cached session found")
 
+        # The cached path sets a domain-less access_token cookie; a second one from the
+        # login response would make cookies.get() raise CookieConflictError.
+        self._api.cookies.clear()
         try:
             page = self._request(self._api, "GET", self.login_url, api=False)
         except ApiError as e:

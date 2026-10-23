@@ -52,7 +52,7 @@ class SmataDocumentsTests(OfflineTestCase):
             sys.stdout = old_stdout
 
         self.assertEqual(rc, 0)
-        self.assertIn("Stored 2 documents (2 new, 0 updated)", out.getvalue())
+        self.assertIn("Indexed 2 documents (2 new, 0 changed)", out.getvalue())
 
         db_path = self.dest / DB_FILENAME
         self.assertTrue(db_path.is_file())
@@ -64,6 +64,20 @@ class SmataDocumentsTests(OfflineTestCase):
             self.assertEqual({d["id"] for d in stored}, {1, 2})
         finally:
             conn.close()
+
+    def test_reindexing_unchanged_documents_reports_no_updates(self):
+        server, _ = self.make([doc(1)])
+        client_patch = mock.patch("smata_documents.SmataClient",
+                                  side_effect=lambda *args, **kw: server.attach(SmataClient(*args, session_path=self.session_file, **kw)))
+        outputs = []
+        for _ in range(2):
+            out = io.StringIO()
+            with client_patch, mock.patch("sys.stdout", out):
+                main(["index", str(self.config_path)])
+            outputs.append(out.getvalue())
+
+        self.assertIn("Indexed 1 documents (1 new, 0 changed)", outputs[0])
+        self.assertIn("Indexed 1 documents (0 new, 0 changed)", outputs[1])
 
     def test_second_index_updates_existing_records(self):
         docs = [doc(1, display_name="Original Name")]
@@ -90,7 +104,7 @@ class SmataDocumentsTests(OfflineTestCase):
             sys.stdout = old_stdout
 
         self.assertEqual(rc, 0)
-        self.assertIn("Stored 1 documents (0 new, 1 updated)", out.getvalue())
+        self.assertIn("Indexed 1 documents (0 new, 1 changed)", out.getvalue())
 
         db_path = self.dest / DB_FILENAME
         conn = sqlite3.connect(db_path)
@@ -163,7 +177,7 @@ class SmataDocumentsTests(OfflineTestCase):
 
         self.assertEqual(rc, 0)
         output = out.getvalue()
-        self.assertIn("Stored 1 documents", output)
+        self.assertIn("Indexed 1 documents", output)
         self.assertIn('"display_name": "Doc 42"', output)
 
     def test_format_local_datetime(self):
@@ -261,7 +275,7 @@ class DownloadCommandTests(OfflineTestCase):
         rc, out, _ = self.run_command("download")
 
         self.assertEqual(rc, 0)
-        self.assertLess(out.index("Stored 2 documents"), out.index("Downloaded 2 files"))
+        self.assertLess(out.index("Indexed 2 documents"), out.index("Downloaded 2 files"))
         self.assertEqual(len(self.server.file_requests()), 2)
 
     def test_picks_up_new_documents_without_a_separate_index(self):
@@ -273,6 +287,56 @@ class DownloadCommandTests(OfflineTestCase):
         self.assertEqual(rc, 0)
         self.assertIn("Downloaded 1 files", out)
         self.assertIn(3, self.stored())
+
+    def info(self, *args):
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch("sys.stdout", out), mock.patch("sys.stderr", err):
+            rc = main(["info", *args, "-c", str(self.config_path)])
+        return rc, out.getvalue(), err.getvalue()
+
+    def test_info_by_bare_name_and_glob(self):
+        self.run_command("download")
+        name = self.stored()[1]["local_filename"]
+
+        rc, out, _ = self.info(name)
+        self.assertEqual(rc, 0)
+        self.assertIn(name, out)
+        self.assertIn("display_name", out)
+
+        rc, out, _ = self.info("*.pdf")
+        self.assertEqual(rc, 0)
+        self.assertIn(self.stored()[2]["local_filename"], out)
+
+    def test_info_formats_users_and_links_without_json(self):
+        from smata_documents import format_info
+        stored = {"local_filename": "f.pdf", "downloaded_at": None, "first_seen": 1, "last_seen": 1}
+        raw = {"additional_users": [{"id": 7, "full_name": "Ann Lee"}, {"id": 8, "full_name": "Bo Kim"}],
+               "links": {"file_url": "https://f/x", "thumb_url": "https://f/t"}}
+        text = format_info(stored, raw)
+        self.assertIn("Ann Lee, Bo Kim\n", text)
+        self.assertNotIn("7", text.split("additional_users")[1].split("links")[0])
+        self.assertIn("file_url: https://f/x\n", text)
+        self.assertIn("thumb_url: https://f/t", text)
+        self.assertNotIn("{", text)
+
+    def test_info_by_path(self):
+        self.run_command("download")
+        name = self.stored()[1]["local_filename"]
+        rc, out, _ = self.info(str(self.dest / name))
+        self.assertEqual(rc, 0)
+        self.assertIn(name, out)
+
+    def test_info_json_is_the_raw_records(self):
+        self.run_command("download")
+        rc, out, _ = self.info("*.pdf", "--json")
+        self.assertEqual(rc, 0)
+        self.assertEqual({r["id"] for r in json.loads(out)}, {1, 2})
+
+    def test_info_unknown_file_is_an_error(self):
+        self.run_command("download")
+        rc, out, err = self.info("nope.pdf")
+        self.assertEqual(rc, 1)
+        self.assertIn("nope.pdf", err)
 
     def test_failed_index_stops_before_downloading(self):
         self.server.password = "changed"
