@@ -1,14 +1,11 @@
-"""Offline tests for the command line and the config file."""
+"""Offline tests for the config file."""
 
-import io
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from typing import ClassVar
 
-from smata.cli import main
 from smata.config import load_config, resolve_config, resolve_password
 from smata.errors import ConfigError
 
@@ -73,44 +70,6 @@ class ConfigTests(unittest.TestCase):
         p.chmod(0o600)
         s = resolve_config(load_config(p))
         self.assertEqual(resolve_password(s), "secret")
-
-
-class CliTests(unittest.TestCase):
-    def test_help_flag_prints_help(self):
-        out = io.StringIO()
-        old, sys.stdout = sys.stdout, out
-        try:
-            self.assertEqual(main(["--help"]), 0)
-        finally:
-            sys.stdout = old
-        self.assertIn("Exit codes", out.getvalue())
-
-    def test_no_args_uses_config_toml_in_cwd(self):
-        old_cwd, old_err = os.getcwd(), sys.stderr
-        with tempfile.TemporaryDirectory() as d:
-            os.chdir(d)
-            sys.stderr = io.StringIO()
-            try:
-                self.assertEqual(main([]), 2)
-                self.assertIn("config.toml", sys.stderr.getvalue())
-            finally:
-                os.chdir(old_cwd)
-                sys.stderr = old_err
-
-    def test_bad_flag_is_usage_error(self):
-        old, sys.stderr = sys.stderr, io.StringIO()
-        try:
-            self.assertEqual(main(["--nope"]), 2)
-            self.assertEqual(main(["--email", "a@b"]), 2)
-        finally:
-            sys.stderr = old
-
-    def test_missing_config_file_is_usage_error(self):
-        old, sys.stderr = sys.stderr, io.StringIO()
-        try:
-            self.assertEqual(main(["/nonexistent/config.toml"]), 2)
-        finally:
-            sys.stderr = old
 
 
 if __name__ == "__main__":

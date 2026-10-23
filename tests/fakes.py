@@ -14,7 +14,6 @@ from unittest import mock
 
 import requests
 
-from smata.archive import deep_merge
 from smata.client import Client
 
 T0 = 1_700_000_000  # 2023-11-14
@@ -22,6 +21,14 @@ TENANT = "https://acme.my.smata.com"
 API_BASE = "https://my.smata.com/api"
 FILE_HOST = "https://files.example/"
 LOGIN_PAGE = '<form><input name="authenticity_token" value="csrf-123"></form>'
+
+
+def deep_merge(old: dict, new: dict) -> dict:
+    """Merges two dicts, recursing into nested dicts; new wins on conflicts."""
+    out = dict(old)
+    for k, v in new.items():
+        out[k] = deep_merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
 
 
 def doc(id, category="Minutes", is_invoice=False, updated_at=T0, **extra):

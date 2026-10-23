@@ -10,7 +10,8 @@ from unittest import mock
 from smata.client import SmataClient
 from smata.storage import DB_FILENAME, add_document, create_database, list_documents
 from smata_documents import format_local_datetime, main
-from tests.fakes import TENANT, OfflineTestCase, doc
+from smata.naming import main_filename
+from tests.fakes import FILE_HOST, TENANT, OfflineTestCase, doc
 
 
 class SmataDocumentsTests(OfflineTestCase):
@@ -169,6 +170,118 @@ class SmataDocumentsTests(OfflineTestCase):
         self.assertEqual(format_local_datetime(None), "-")
         formatted = format_local_datetime(1700000000)
         self.assertRegex(formatted, r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$")
+
+
+class DownloadCommandTests(OfflineTestCase):
+    def setUp(self):
+        super().setUp()
+        self.dest = self.tmp / "dest"
+        self.config_path = self.tmp / "config.toml"
+        self.config_path.write_text(
+            f'login_url = "{TENANT}"\nemail = "me@example.com"\npassword = "pw"\n'
+            f'timezone = "UTC"\ndest = "{self.dest}"\n')
+        self.docs = [doc(1), doc(2)]
+        self.server, _ = self.make(self.docs)
+
+    def run_command(self, command):
+        out, err = io.StringIO(), io.StringIO()
+        patch = mock.patch("smata_documents.SmataClient",
+                           side_effect=lambda *a, **kw: self.server.attach(
+                               SmataClient(*a, session_path=self.session_file, **kw)))
+        with patch, mock.patch("sys.stdout", out), mock.patch("sys.stderr", err):
+            rc = main([command, str(self.config_path)])
+        return rc, out.getvalue(), err.getvalue()
+
+    def stored(self):
+        conn = create_database(self.dest / DB_FILENAME)
+        try:
+            return {d["id"]: d for d in list_documents(conn)}
+        finally:
+            conn.close()
+
+    def test_downloads_missing_files_and_updates_database(self):
+        self.run_command("index")
+        rc, out, _ = self.run_command("download")
+
+        self.assertEqual(rc, 0)
+        self.assertIn("Downloaded 2 files", out)
+        for d in self.stored().values():
+            self.assertTrue((self.dest / d["local_filename"]).is_file())
+            self.assertIsNotNone(d["downloaded_at"])
+
+    def test_second_run_downloads_nothing(self):
+        self.run_command("index")
+        self.run_command("download")
+        before = len(self.server.file_requests())
+        rc, out, _ = self.run_command("download")
+
+        self.assertEqual(rc, 0)
+        self.assertIn("Downloaded 0 files", out)
+        self.assertEqual(len(self.server.file_requests()), before)
+
+    def test_file_deleted_from_disk_is_downloaded_again(self):
+        self.run_command("index")
+        self.run_command("download")
+        gone = self.stored()[1]["local_filename"]
+        (self.dest / gone).unlink()
+
+        rc, out, _ = self.run_command("download")
+
+        self.assertEqual(rc, 0)
+        self.assertIn("Downloaded 1 files", out)
+        self.assertTrue((self.dest / gone).is_file())
+
+    def test_existing_file_is_recorded_without_downloading(self):
+        self.run_command("index")
+        self.dest.mkdir(parents=True, exist_ok=True)
+        name = main_filename(self.docs[0])
+        (self.dest / name).write_bytes(b"already here")
+
+        self.run_command("download")
+
+        self.assertEqual((self.dest / name).read_bytes(), b"already here")
+        self.assertEqual(self.stored()[1]["local_filename"], name)
+        self.assertEqual(len(self.server.file_requests()), 1)
+
+    def test_failed_download_is_reported_and_others_continue(self):
+        self.run_command("index")
+        self.server.missing_files.add(self.docs[0]["links"]["file_url"])
+
+        rc, out, err = self.run_command("download")
+
+        self.assertEqual(rc, 1)
+        self.assertIn("1 failed", out)
+        self.assertIn("document 1", err)
+        self.assertNotIn(FILE_HOST, err)
+        stored = self.stored()
+        self.assertIsNone(stored[1]["downloaded_at"])
+        self.assertIsNotNone(stored[2]["downloaded_at"])
+
+    def test_indexes_before_downloading(self):
+        rc, out, _ = self.run_command("download")
+
+        self.assertEqual(rc, 0)
+        self.assertLess(out.index("Stored 2 documents"), out.index("Downloaded 2 files"))
+        self.assertEqual(len(self.server.file_requests()), 2)
+
+    def test_picks_up_new_documents_without_a_separate_index(self):
+        self.run_command("download")
+        self.server.docs.append(doc(3))
+
+        rc, out, _ = self.run_command("download")
+
+        self.assertEqual(rc, 0)
+        self.assertIn("Downloaded 1 files", out)
+        self.assertIn(3, self.stored())
+
+    def test_failed_index_stops_before_downloading(self):
+        self.server.password = "changed"
+
+        rc, out, err = self.run_command("download")
+
+        self.assertEqual(rc, 3)
+        self.assertNotIn("Downloaded", out)
+        self.assertEqual(self.server.file_requests(), [])
 
 
 if __name__ == "__main__":

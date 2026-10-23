@@ -10,7 +10,7 @@ import unittest
 
 import requests
 
-from smata.client import Client, normalise_login_url
+from smata.client import Client
 from smata.errors import ApiError, AuthError
 from tests.fakes import TENANT, OfflineTestCase, doc
 
@@ -20,12 +20,6 @@ class GuardTests(OfflineTestCase):
         client = Client(TENANT, "UTC", min_interval=0, retries=0)
         with self.assertRaises(AssertionError):
             client.login("me@example.com", "pw")
-
-
-class LoginUrlTests(unittest.TestCase):
-    def test_login_url_normalised(self):
-        for u in ("acme.my.smata.com", "https://acme.my.smata.com/", "https://acme.my.smata.com/users/sign_in"):
-            self.assertEqual(normalise_login_url(u), "https://acme.my.smata.com/users/sign_in")
 
 
 class LoginTests(OfflineTestCase):
@@ -205,11 +199,10 @@ class CompatTests(unittest.TestCase):
         self.assertIs(Direct, Client)
 
     def test_public_api_is_importable_from_the_package(self):
-        from smata import Archive, load_config, open_store, resolve_config
+        from smata import load_config, open_store, resolve_config
         from smata import Client as PackageClient
 
         self.assertIs(PackageClient, Client)
-        self.assertTrue(callable(Archive))
         self.assertTrue(callable(load_config))
         self.assertTrue(callable(resolve_config))
         self.assertTrue(callable(open_store))

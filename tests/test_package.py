@@ -14,13 +14,16 @@ class LayerTests(unittest.TestCase):
     def test_config_does_not_import_the_client(self):
         self.assertNotIn("smata.client", _imports_of("smata.config"))
 
-    def test_client_does_not_import_config_or_archive(self):
+    def test_client_does_not_import_config_or_naming(self):
         imported = _imports_of("smata.client")
         self.assertNotIn("smata.config", imported)
-        self.assertNotIn("smata.archive", imported)
+        self.assertNotIn("smata.naming", imported)
 
-    def test_archive_does_not_import_config(self):
-        self.assertNotIn("smata.config", _imports_of("smata.archive"))
+    def test_session_imports_nothing_from_the_package(self):
+        self.assertEqual([m for m in _imports_of("smata.session") if m.startswith("smata")], [])
+
+    def test_naming_imports_nothing_from_the_package(self):
+        self.assertEqual([m for m in _imports_of("smata.naming") if m.startswith("smata")], [])
 
     def test_storage_imports_nothing_from_the_package(self):
         self.assertEqual([m for m in _imports_of("smata.storage") if m.startswith("smata")], [])
