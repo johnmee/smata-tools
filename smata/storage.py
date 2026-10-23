@@ -20,6 +20,7 @@ from importlib import resources
 from pathlib import Path
 
 SCHEMA_FILE = Path(__file__).with_name("schema.sql")
+DB_FILENAME = "smata.db"
 
 
 def schema_sql() -> str:
@@ -33,6 +34,8 @@ def schema_sql() -> str:
 
 def create_database(path: str | Path) -> sqlite3.Connection:
     """Opens the SQLite database at path, creating the file and documents table if missing."""
+    if str(path) != ":memory:":
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='documents'").fetchone()
     if not exists:
@@ -97,6 +100,13 @@ def get_document(conn: sqlite3.Connection, id: int) -> dict | None:
 def get_document_by_local_filename(conn: sqlite3.Connection, local_filename: str) -> dict | None:
     """Returns the stored row whose local_filename matches, or None."""
     return _fetch_one(conn, "local_filename", local_filename)
+
+
+def list_documents(conn: sqlite3.Connection) -> list[dict]:
+    """Returns all stored documents as dicts, ordered by created_at DESC, id DESC."""
+    cursor = conn.execute("SELECT * FROM documents ORDER BY created_at DESC, id DESC")
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
 def mark_downloaded(conn: sqlite3.Connection, id: int, local_filename: str, now: int | None = None) -> bool:

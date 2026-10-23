@@ -29,7 +29,14 @@ from smata.archive import Archive, DocumentsSource, SyncResult
 from smata.client import DEFAULT_SESSION_PATH, Client, SmataClient
 from smata.config import Config, load_config, resolve_config, resolve_password
 from smata.errors import ApiError, AuthError, ConfigError, SmataError
-from smata.storage import create_database, get_document, mark_downloaded, open_store
+from smata.storage import (
+    DB_FILENAME,
+    create_database,
+    get_document,
+    list_documents,
+    mark_downloaded,
+    open_store,
+)
 from smata.version import __version__
 
 __all__ = [
@@ -39,6 +46,7 @@ __all__ = [
     "Client",
     "Config",
     "ConfigError",
+    "DB_FILENAME",
     "DEFAULT_SESSION_PATH",
     "DocumentsSource",
     "SmataClient",
@@ -47,6 +55,7 @@ __all__ = [
     "__version__",
     "create_database",
     "get_document",
+    "list_documents",
     "load_config",
     "mark_downloaded",
     "open_store",

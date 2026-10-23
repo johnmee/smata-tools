@@ -38,15 +38,30 @@ There is no API-key or OAuth flow for owners. The session is created by the web 
    - `user[password]`: the password
    - `user[remember_me]`: `0`
    - `commit`: `Log in`
-3. A successful login sets an **`access_token` cookie**. Send it on every API call as a header:
+3. A successful login returns `302` (to `https://<tenant>.app.smata.com/building-profile?id=<SP>`) and sets **four cookies** on the `.smata.com` domain:
+   - `access_token` — 43 characters, URL-safe base64, no padding. Decodes to 32 random bytes. It is an opaque secret: it embeds no user id and no expiry.
+   - `refresh_token` — 64 hex characters. Its purpose is undocumented; no endpoint that consumes it was found (see below).
+   - `expires_at` — Unix epoch **seconds**, set to exactly **login time + 7200**. This is the session's stated lifetime: **2 hours**.
+   - `_smata_session` — the Rails session cookie.
+   Send the token on every API call as a header:
    ```
    Authorization: Bearer <access_token>
    Accept: application/json
    ```
+   All four cookies are **session cookies** (`Expires`/`Max-Age` absent); they live in the cookie jar until the client is closed. Only `access_token` needs to be sent to the API — the bearer header is what authenticates the call, not the cookie.
 
 A failed login returns `200` with the login page again, and no `access_token` cookie. Check for the cookie rather than the status code.
 
-The token's lifetime and refresh behaviour are unknown. Logging in again works.
+## 2.1 Token lifetime and refresh
+
+Measured on 2026-10-23 against a lot-owner account.
+
+- **Stated lifetime: 2 hours.** `expires_at` was `now + 7200` (7199–7200s) on five separate logins.
+- **Not a sliding session.** `expires_at` stays fixed at login while the remaining life counts down in lockstep. Using the token does not extend it, and the `access_token` value never changes on use.
+- **No refresh endpoint exists.** `GET`/`POST` on `/api/v1/auth/refresh`, `/api/oauth/token`, `/api/v1/refresh_token`, `/api/v1/tokens/refresh`, `/api/v1/sessions/refresh`, `/api/v1/auth/token`, `/api/v1/token/refresh`, `/api/v1/oauth/refresh`, `/api/v1/users/refresh_token`, `/api/v1/oauth2/token`, `/api/v1/authentications/refresh`, `/api/v1/users/refresh`, `/api/v1/renew` all returned `500` or `401`. The web app's own `401` handler shows `"Session expired."` and redirects to `/users/sign_in` — it does not attempt a silent re-auth. **Logging in again is the only recovery.**
+- **Logging in again does not invalidate the previous token.** Two tokens issued by consecutive logins were both accepted concurrently. There is no single-session behaviour and no way to revoke a token except changing the password.
+
+**Not yet verified: whether the server enforces the 2-hour deadline.** An API call was still returning `200` at 41 minutes; the measurement was cut short before reaching `expires_at`. Treat 2 hours as the server's *stated* lifetime, not a proven hard limit — and do not rely on either, since the token could also be invalidated early by a password change or a session clear.
 
 The web app also has `PUT /v1/users/{id}` with a `two_fa_enabled` field. Accounts with two-factor authentication turned on will need an extra step that isn't documented here.
 
@@ -759,7 +774,9 @@ https://s3.smata.com/uploads/file_attachment/attachment/<document_id>/<filename>
 ## 18. Notes for API clients
 
 - **Only issue `GET` requests** if you are archiving. Some reads have side effects in the web app, and the app makes them through separate write calls: `mark_as_seen`, `read_messages`, `mark_all_read`. An archiver must not call those.
-- **Throttle your requests.** The web app has a `/429` page, so rate limiting exists. The limits are unknown.
+- **Do not store the access token.** It is an opaque 32-byte secret with no expiry embedded, good for 2 hours, and not revoked by logging in again — so a stored copy is a standing window into the account that the user cannot close without changing their password. Log in again at the start of each run instead. If you must survive a run longer than 2 hours, re-prompt for the password; there is no refresh endpoint to fall back on.
+- **Treat 2 hours as a planning figure, not a guarantee.** The server states `expires_at = now + 7200`, but whether it hard-enforces that deadline is unverified, and a password change or server-side session clear can kill a token early.
+- **Throttle your requests.** The web app has a `/429` page, so rate limiting exists. The limits are unknown. No `429` was observed from 40 back-to-back document-list calls, so ordinary paced crawling is well inside the limit — but that is one sample, not a measured ceiling.
 - **Documents disappear.** `GET /v1/documents/{id}` starts returning `404` for items that were listed before, so keep your own copy.
 - **Job `access_token`s and the S3 file URLs** grant access without logging in. Treat them as secrets.
 

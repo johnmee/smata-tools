@@ -40,6 +40,12 @@ class CreateDatabaseTests(DatabaseTestCase):
             conn.close()
             self.assertEqual(tables, ["documents"])
 
+    def test_creates_parent_directory_if_missing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "sub" / "folder" / "docs.db"
+            db.create_database(path).close()
+            self.assertTrue(path.exists())
+
     def test_reopening_keeps_rows(self):
         item = self.items[0]
         with tempfile.TemporaryDirectory() as folder:
@@ -164,6 +170,18 @@ class MarkDownloadedTests(DatabaseTestCase):
     def test_unknown_id_returns_false(self):
         self.assertFalse(db.mark_downloaded(self.conn, 9, "a.pdf", now=1))
         self.assertIsNone(db.get_document_by_local_filename(self.conn, "a.pdf"))
+
+
+class ListDocumentsTests(DatabaseTestCase):
+    def test_empty_database_returns_empty_list(self):
+        self.assertEqual(db.list_documents(self.conn), [])
+
+    def test_returns_all_documents(self):
+        self.add_all(now=10)
+        docs = db.list_documents(self.conn)
+        self.assertEqual(len(docs), len(self.items))
+        ids = [d["id"] for d in docs]
+        self.assertEqual(set(ids), {item["id"] for item in self.items})
 
 
 if __name__ == "__main__":

@@ -26,6 +26,7 @@ LOGIN_PAGE = '<form><input name="authenticity_token" value="csrf-123"></form>'
 
 def doc(id, category="Minutes", is_invoice=False, updated_at=T0, **extra):
     d = {"id": id, "category": category, "is_invoice": is_invoice, "file_extension": "pdf",
+         "filename": f"doc-{id}.pdf", "sp_number": "SP12345",
          "added_date": T0, "created_at": T0, "updated_at": updated_at, "display_name": f"Doc {id}",
          "links": {"file_url": f"{FILE_HOST}{id}/f.pdf"}}
     d.update(extra)
