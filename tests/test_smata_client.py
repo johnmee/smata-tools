@@ -149,6 +149,13 @@ class PaginationTests(OfflineTestCase):
         self.assertEqual(invoices, [10])
         self.assertEqual(server.count("GET", "/api/v1/documents"), 4)
 
+    def test_get_all_merges_every_page_into_one_response(self):
+        server, client = self.logged_in([doc(i) for i in range(1, 6)])
+        response = client.get_all("/v1/documents", "documents", per_page=2)
+        self.assertEqual([d["id"] for d in response["documents"]], [1, 2, 3, 4, 5])
+        self.assertEqual(response["meta"]["total_pages"], 3)
+        self.assertEqual(server.count("GET", "/api/v1/documents"), 3)
+
 
 class RetryTests(OfflineTestCase):
     def test_server_errors_are_retried(self):
@@ -199,8 +206,8 @@ class CompatTests(unittest.TestCase):
         self.assertIs(Direct, Client)
 
     def test_public_api_is_importable_from_the_package(self):
-        from smata import load_config, open_store, resolve_config
         from smata import Client as PackageClient
+        from smata import load_config, open_store, resolve_config
 
         self.assertIs(PackageClient, Client)
         self.assertTrue(callable(load_config))

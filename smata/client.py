@@ -159,16 +159,26 @@ class SmataClient:
         except ValueError as e:
             raise ApiError(f"GET {path}: response is not JSON", resp.status_code) from e
 
-    def paginate(self, path: str, key: str, per_page: int = 100, **params):
-        """Yields every item of a paginated list endpoint."""
+    def pages(self, path: str, per_page: int = 100, **params):
+        """Yields the JSON response of every page of a paginated list endpoint."""
         page = 1
         while True:
             data = self.get_json(path, page=page, per_page=per_page, **params)
-            yield from data.get(key) or []
+            yield data
             total_pages = (data.get("meta") or {}).get("total_pages") or 1
             if page >= total_pages:
                 return
             page += 1
+
+    def paginate(self, path: str, key: str, per_page: int = 100, **params):
+        """Yields every item of a paginated list endpoint."""
+        for data in self.pages(path, per_page, **params):
+            yield from data.get(key) or []
+
+    def get_all(self, path: str, key: str, per_page: int = 100, **params) -> dict:
+        """Returns the first page's response with `key` holding the items of every page."""
+        responses = list(self.pages(path, per_page, **params))
+        return {**responses[0], key: [item for data in responses for item in data.get(key) or []]}
 
     def download(self, url: str, path: str | os.PathLike) -> int:
         """Streams url to path via path.part, so an interrupted download leaves no partial file.

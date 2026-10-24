@@ -8,9 +8,9 @@ import unittest
 from unittest import mock
 
 from smata.client import SmataClient
+from smata.naming import main_filename
 from smata.storage import DB_FILENAME, add_document, create_database, list_documents
 from smata_documents import format_local_datetime, main
-from smata.naming import main_filename
 from tests.fakes import FILE_HOST, TENANT, OfflineTestCase, doc
 
 

@@ -7,7 +7,7 @@ Run without arguments to show the help.  The first argument is a command:
     python smata_documents.py download [config.toml]
     python smata_documents.py info FILE... [-c config.toml] [--json]
 
-index loads the config (default: config.toml), fetches page 1 of GET /v1/documents, and stores
+index loads the config (default: config.toml), fetches every page of GET /v1/documents, and stores
 them in <dest>/smata.db.  If smata.db does not exist, it is created using the schema; if it already
 exists, new documents are inserted and existing documents are updated.
 
@@ -53,6 +53,9 @@ from smata.storage import (
     update_document,
 )
 
+#: Documents requested per GET; the API default is 50.
+PER_PAGE = 200
+
 
 def format_local_datetime(ts: int | None) -> str:
     """Formats a Unix epoch timestamp in seconds as local datetime YYYY-MM-DD HH:MM:SS."""
@@ -62,13 +65,13 @@ def format_local_datetime(ts: int | None) -> str:
 
 
 def fetch_documents(config: Config) -> dict:
-    """Logs in and returns the JSON response for page 1 of GET /v1/documents."""
+    """Logs in and returns the JSON response of GET /v1/documents with the documents of every page."""
     client = SmataClient(config.login_url, timezone=config.timezone)
     password = config.password
     if not password and not client.has_valid_session(config.email):
         password = resolve_password(config)
     client.login(config.email, password)
-    return client.get_json("/v1/documents", time_zone=client.timezone)
+    return client.get_all("/v1/documents", "documents", per_page=PER_PAGE, time_zone=client.timezone)
 
 
 def save_documents(config: Config, documents: list[dict]) -> tuple[int, int, Path]:
@@ -270,7 +273,7 @@ def build_parser() -> argparse.ArgumentParser:
                              help=f"TOML config file (default: {DEFAULT_CONFIG})")
 
     index = commands.add_parser("index", parents=[config_args],
-                                help="fetch page 1 of documents from the API into the local database")
+                                help="fetch all documents from the API into the local database")
     index.add_argument("--json", action="store_true", help="also print the API response as JSON")
 
     commands.add_parser("list", parents=[config_args],
@@ -290,7 +293,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_index(config: Config, show_json: bool = False) -> int:
-    """Fetches page 1 of documents into the database and reports it.  Returns the exit code."""
+    """Fetches all documents into the database and reports it.  Returns the exit code."""
     try:
         response = fetch_documents(config)
         inserted, updated, db_path = save_documents(config, response.get("documents") or [])

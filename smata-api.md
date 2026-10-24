@@ -153,7 +153,7 @@ Counts for **one lot-owner account** on 2026-10-06. Other accounts will differ. 
 Paginated list of the documents visible to the user.
 
 **Query parameters:**
-- `page`, `per_page` (int): `per_page` works up to at least 100.
+- `page`, `per_page` (int): `per_page` works up to at least 300.
 - `time_zone` (string): an IANA zone.
 - `is_invoice` (bool): **defaults to `false`.** Invoices are only returned with `is_invoice=true`, so a complete listing needs both calls.
 - `sp_number` (string): filter by building.
