@@ -24,7 +24,9 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import shutil
 import sys
+import textwrap
 from datetime import datetime
 from pathlib import Path
 
@@ -203,21 +205,23 @@ def format_info(doc: dict, raw: dict) -> str:
         "first_seen": format_local_datetime(doc["first_seen"]),
         "last_seen": format_local_datetime(doc["last_seen"]),
     }
-    entries = {**bookkeeping, **raw}
+    # The links group is flattened: file_url, document_url etc. become rows of their own.
+    entries = {**bookkeeping, **{k: v for k, v in raw.items() if k != "links"}, **(raw.get("links") or {})}
     width = max(len(k) for k in entries)
+    columns = shutil.get_terminal_size().columns
     for key, value in entries.items():
         if isinstance(value, int) and not isinstance(value, bool) and key.endswith(("_at", "_date")):
             value = f"{value}  ({format_local_datetime(value)})"
+        elif key == "user" and isinstance(value, dict):
+            value = value.get("full_name") or "-"
         elif key == "additional_users" and isinstance(value, list):
-            value = ", ".join(u.get("full_name", "") for u in value) or "-"
-        elif key == "links" and isinstance(value, dict):
-            value = [f"{name}: {url}" for name, url in value.items()]
+            # Wrap between names, never inside one, with the overflow kept in the value column.
+            names = ", ".join(u.get("full_name", "").replace(" ", " ") for u in value) or "-"
+            indent = " " * (width + 4)
+            value = textwrap.fill(names, width=columns, initial_indent=indent, subsequent_indent=indent,
+                                  break_long_words=False).lstrip().replace(" ", " ")
         elif isinstance(value, (dict, list)):
             value = json.dumps(value, ensure_ascii=False)
-        if isinstance(value, list):
-            # One item per line, aligned under the value column.
-            indent = " " * (width + 4)
-            value = "\n".join(f"{indent if i else ''}{item}" for i, item in enumerate(value)) or "-"
         lines.append(f"  {key.ljust(width)}  {value}")
     return "\n".join(lines)
 

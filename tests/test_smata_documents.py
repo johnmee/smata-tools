@@ -315,9 +315,26 @@ class DownloadCommandTests(OfflineTestCase):
         text = format_info(stored, raw)
         self.assertIn("Ann Lee, Bo Kim\n", text)
         self.assertNotIn("7", text.split("additional_users")[1].split("links")[0])
-        self.assertIn("file_url: https://f/x\n", text)
-        self.assertIn("thumb_url: https://f/t", text)
+        self.assertRegex(text, r"\n  file_url +https://f/x\n")
+        self.assertRegex(text, r"\n  thumb_url +https://f/t")
+        self.assertNotIn("links", text)
         self.assertNotIn("{", text)
+
+    def test_info_shows_user_name_and_wraps_additional_users_in_value_column(self):
+        from smata_documents import format_info
+        stored = {"local_filename": "f.pdf", "downloaded_at": None, "first_seen": 1, "last_seen": 1}
+        users = [{"id": i, "full_name": f"Firstname{i} Lastname{i}"} for i in range(6)]
+        raw = {"user": {"id": 9, "full_name": "Uma Poe"}, "additional_users": users}
+        with mock.patch("shutil.get_terminal_size", return_value=mock.Mock(columns=60)):
+            text = format_info(stored, raw)
+        self.assertRegex(text, r"\n  user +Uma Poe\n")
+        rows = text.split("additional_users")[1].splitlines()
+        self.assertGreater(len(rows), 1)
+        indent = len("  additional_users  ")
+        for row in rows[1:]:
+            self.assertEqual(row[:indent].strip(), "")
+        self.assertTrue(all(len(r) <= 60 for r in rows))
+        self.assertIn("Firstname0 Lastname0,", text)
 
     def test_info_by_path(self):
         self.run_command("download")
