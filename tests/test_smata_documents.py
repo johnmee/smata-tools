@@ -52,7 +52,7 @@ class SmataDocumentsTests(OfflineTestCase):
             sys.stdout = old_stdout
 
         self.assertEqual(rc, 0)
-        self.assertIn("Indexed 2 documents (2 new, 0 changed)", out.getvalue())
+        self.assertIn("Indexed 2 documents and 0 invoices (2 new, 0 changed)", out.getvalue())
 
         db_path = self.dest / DB_FILENAME
         self.assertTrue(db_path.is_file())
@@ -76,8 +76,8 @@ class SmataDocumentsTests(OfflineTestCase):
                 main(["index", str(self.config_path)])
             outputs.append(out.getvalue())
 
-        self.assertIn("Indexed 1 documents (1 new, 0 changed)", outputs[0])
-        self.assertIn("Indexed 1 documents (0 new, 0 changed)", outputs[1])
+        self.assertIn("Indexed 1 documents and 0 invoices (1 new, 0 changed)", outputs[0])
+        self.assertIn("Indexed 1 documents and 0 invoices (0 new, 0 changed)", outputs[1])
 
     def test_second_index_updates_existing_records(self):
         docs = [doc(1, display_name="Original Name")]
@@ -104,7 +104,7 @@ class SmataDocumentsTests(OfflineTestCase):
             sys.stdout = old_stdout
 
         self.assertEqual(rc, 0)
-        self.assertIn("Indexed 1 documents (0 new, 1 changed)", out.getvalue())
+        self.assertIn("Indexed 1 documents and 0 invoices (0 new, 1 changed)", out.getvalue())
 
         db_path = self.dest / DB_FILENAME
         conn = sqlite3.connect(db_path)
@@ -180,6 +180,46 @@ class SmataDocumentsTests(OfflineTestCase):
         self.assertIn("Indexed 1 documents", output)
         self.assertIn('"display_name": "Doc 42"', output)
 
+    def test_index_stores_documents_and_invoices_with_the_flag_set(self):
+        server, _ = self.make([doc(1), doc(2, is_invoice=True)])
+        out = io.StringIO()
+        with mock.patch("smata_documents.SmataClient",
+                        side_effect=lambda *args, **kw: server.attach(SmataClient(*args, session_path=self.session_file, **kw))):
+            with mock.patch("sys.stdout", out):
+                rc = main(["index", str(self.config_path), "--json"])
+
+        self.assertEqual(rc, 0)
+        self.assertIn("Indexed 1 documents and 1 invoices (2 new, 0 changed)", out.getvalue())
+        self.assertEqual({d["id"] for d in json.loads(out.getvalue().split("\n", 1)[1])["documents"]}, {1, 2})
+        conn = create_database(self.dest / DB_FILENAME)
+        try:
+            self.assertEqual({d["id"]: d["is_invoice"] for d in list_documents(conn)}, {1: 0, 2: 1})
+        finally:
+            conn.close()
+        self.assertEqual(server.count("GET", "/api/v1/documents"), 2)
+
+    def test_index_creates_the_invoices_folder_in_an_existing_dest(self):
+        server, _ = self.make([doc(1)])
+        self.assertEqual(list(self.dest.iterdir()), [])
+        with mock.patch("smata_documents.SmataClient",
+                        side_effect=lambda *args, **kw: server.attach(SmataClient(*args, session_path=self.session_file, **kw))):
+            with mock.patch("sys.stdout", io.StringIO()):
+                main(["index", str(self.config_path)])
+
+        self.assertTrue((self.dest / "invoices").is_dir())
+
+    def test_failed_invoice_listing_saves_nothing(self):
+        server, _ = self.make([doc(1), doc(2, is_invoice=True)])
+        server.failing_lists.add("true")
+        err = io.StringIO()
+        with mock.patch("smata_documents.SmataClient",
+                        side_effect=lambda *args, **kw: server.attach(SmataClient(*args, session_path=self.session_file, **kw))):
+            with mock.patch("sys.stdout", io.StringIO()), mock.patch("sys.stderr", err):
+                rc = main(["index", str(self.config_path)])
+
+        self.assertEqual(rc, 1)
+        self.assertFalse((self.dest / DB_FILENAME).exists())
+
     def test_format_local_datetime(self):
         self.assertEqual(format_local_datetime(None), "-")
         formatted = format_local_datetime(1700000000)
@@ -222,6 +262,25 @@ class DownloadCommandTests(OfflineTestCase):
         for d in self.stored().values():
             self.assertTrue((self.dest / d["local_filename"]).is_file())
             self.assertIsNotNone(d["downloaded_at"])
+
+    def test_invoices_are_downloaded_into_the_invoices_folder(self):
+        invoice = doc(3, category="Invoice", is_invoice=True)
+        self.server.docs.append(invoice)
+        self.run_command("index")
+        rc, out, _ = self.run_command("download")
+
+        self.assertEqual(rc, 0)
+        self.assertIn("Downloaded 3 files", out)
+        stored = self.stored()
+        self.assertEqual(stored[3]["local_filename"], f"invoices/{main_filename(invoice)}")
+        self.assertTrue((self.dest / stored[3]["local_filename"]).is_file())
+        self.assertEqual(stored[1]["local_filename"], main_filename(self.docs[0]))
+        self.assertTrue((self.dest / stored[1]["local_filename"]).is_file())
+
+        before = len(self.server.file_requests())
+        _, out, _ = self.run_command("download")
+        self.assertIn("Downloaded 0 files", out)
+        self.assertEqual(len(self.server.file_requests()), before)
 
     def test_second_run_downloads_nothing(self):
         self.run_command("index")

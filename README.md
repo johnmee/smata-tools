@@ -2,23 +2,37 @@
 
 Download all the files from the SMATA strata document system.
 
-## INSTALLATION
+Owners in strata buildings using software provided by [Smata Technologies](https://www.smata.com) may find
+the web interface slow, clumsy, a provider lock-in, and a general impediment to browsing the available documents
+and gaining a better insight into what is happening in the scheme, and when.
 
-Clone the repository into a python environment.
+This tools liberates the documents by downloading all available files and metadata onto the local hardware.
 
-    uv sync
+* Downloading files (documents and invoices) to local systems
+* Capturing metadata associated with documents
+* Detecting new files and changes to existing files
+* Retaining removed files
+* Migrating to other systems/providers/managers
 
 ## USAGE
 
-* The easiest way is to copy the `config.example.toml` to `config.toml`, add your details, then run `python smata_documents.py` with no arguments to see the commands.
+## INSTALLATION
+
+This is a python script which will use your personal website access (username/password) to call the same smata API that runs the web interface.  
+
+You need the [Python](https://www.python.org/) programming language installed and the Python package manager [Astral UV](https://docs.astral.sh/uv/).
+
+Clone this repository to your local environment and run
+
+    uv sync
 
 ### Configuration and Authentication
 
-Create a `config.toml` (see `config.example.toml`). The login url, email, password, destination folder (`dest`) and `timezone` are all set there; there are no command-line flags for them.
+> The easiest way is to copy the `config.example.toml` to `config.toml`, add your details, then run `python smata_documents.py` with no arguments to see the commands.
 
-To protect the config details you should restrict read permissions with `chmod 600 config.toml`.  For more protection but less convenience you can omit the `password` configuration and be prompted for it instead.
+Copy the `config.example.toml`) to `config.toml` and complete the login url, email, password.  The destination folder (`dest`) and `timezone` are also configurable there.
 
-File URLs are downloadable without a login: authentication only protects the metadata which returns lists of ID->URLs mappings.
+To protect your password, consider restricting read permissions with `chmod 600 config.toml`; or, for more protection and less convenience, omit the `password` configuration and instead be prompted for it on very use.
 
 ### Commands
 
@@ -28,13 +42,11 @@ File URLs are downloadable without a login: authentication only protects the met
 
 Each command reads `./config.toml`, or takes the path of another config file as its last argument. Run with no arguments to show the help.
 
-`download` runs `index` first, so on a first run it is the only command you need. If the index step fails (for example a wrong password) nothing is downloaded. A file counts as downloaded only if it is recorded in the database and still exists in `dest`; a file you delete is fetched again on the next run. Failed downloads are reported and the command exits 1.
-
-Only the first page of the documents listing is indexed so far.
+`download` runs `index` first, so it is the only command you need. If the index step fails (for example a wrong password) nothing is downloaded. A file counts as downloaded only if it is recorded in the database and still exists in `dest`; a file you delete is fetched again on the next run. Failed downloads are reported and the command exits 1.
 
 ### Re-use
 
-Run `download` again; it picks up new documents and fetches only the files missing from `dest`.
+Run `download` repeatedly; it picks up new documents and fetches only the files missing from `dest`.
 
 
 ## CODE LAYOUT
@@ -76,3 +88,12 @@ Programmatic use:
 Everything runs against `tests/fakes.py`, a fake SMATA server, so the suite never touches
 the real site or the network.
 
+### TODO
+
+The API offers a more functionality which we could tap into. See [smata-api](smata-api.md).  "Jobs" is of interest, but the usefulness of the smata software is heavily dependant upon the strata managers diligence in using it, so your mileage may vary.
+
+Other functionality might be:
+* meaningful invoice file names (extract the vendor name from invoices and price, add to filename)
+* meaningful document file names (the date and categories are useful enough; perhaps not ideal to what they're about, but unfortunately the names my strata manager gives these files are effectively useless, if not obsfurcating)
+* OCR of the downloaded files to create searchable contents
+* RAG of the downloaded files to enable greater LLM insights

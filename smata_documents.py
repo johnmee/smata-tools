@@ -7,17 +7,19 @@ Run without arguments to show the help.  The first argument is a command:
     python smata_documents.py download [config.toml]
     python smata_documents.py info FILE... [-c config.toml] [--json]
 
-index loads the config (default: config.toml), fetches every page of GET /v1/documents, and stores
-them in <dest>/smata.db.  If smata.db does not exist, it is created using the schema; if it already
-exists, new documents are inserted and existing documents are updated.
+index loads the config (default: config.toml), fetches every page of GET /v1/documents for both documents and
+invoices (is_invoice=false, then true), and stores them in <dest>/smata.db.  If smata.db does not exist, it is
+created using the schema; if it already exists, new records are inserted and existing ones are updated.  The
+folders <dest> and <dest>/invoices are created if missing.
 
 list shows all stored documents from the local database without making network requests.
 
 download runs index first, then saves the file of every indexed document that is not on disk into <dest>, named
-<date>-<category>-<id>.<ext>, and records local_filename and downloaded_at in the database.
+<date>-<category>-<id>.<ext> (invoices go in <dest>/invoices), and records local_filename and downloaded_at in the
+database.
 
 info prints the stored metadata of downloaded files, given as names, paths or globs; a name with no folder
-is looked up in <dest>.  --json prints the raw JSON records as a list.
+is looked up in <dest>, so use invoices/<name> for an invoice.  --json prints the raw JSON records as a list.
 """
 from __future__ import annotations
 
@@ -56,6 +58,9 @@ from smata.storage import (
 #: Documents requested per GET; the API default is 50.
 PER_PAGE = 200
 
+#: Folder inside the destination that holds the files of invoices.
+INVOICES_DIR = "invoices"
+
 
 def format_local_datetime(ts: int | None) -> str:
     """Formats a Unix epoch timestamp in seconds as local datetime YYYY-MM-DD HH:MM:SS."""
@@ -71,11 +76,20 @@ def fetch_documents(config: Config) -> dict:
     if not password and not client.has_valid_session(config.email):
         password = resolve_password(config)
     client.login(config.email, password)
-    return client.get_all("/v1/documents", "documents", per_page=PER_PAGE, time_zone=client.timezone)
+    # Invoices are only listed with is_invoice=true, so a complete index needs both passes.
+    responses = [client.get_all("/v1/documents", "documents", per_page=PER_PAGE, time_zone=client.timezone,
+                                is_invoice=flag) for flag in ("false", "true")]
+    return {**responses[0], "documents": [doc for response in responses for doc in response["documents"]]}
+
+
+def ensure_dest(config: Config) -> None:
+    """Creates the destination folder and its invoices folder if they are missing."""
+    (config.dest / INVOICES_DIR).mkdir(parents=True, exist_ok=True)
 
 
 def save_documents(config: Config, documents: list[dict]) -> tuple[int, int, Path]:
     """Inserts or updates documents in <config.dest>/smata.db.  Returns (inserted_count, updated_count, db_path)."""
+    ensure_dest(config)
     db_path = config.dest / DB_FILENAME
     inserted = 0
     updated = 0
@@ -105,6 +119,7 @@ def download_files(config: Config) -> tuple[int, list[str], int]:
     again.  A file already at the target path (e.g. a run that stopped before recording it) is
     recorded without downloading it again.  Returns (downloaded, failed_ids, no_url).
     """
+    ensure_dest(config)
     db_path = config.dest / DB_FILENAME
     client = SmataClient(config.login_url, timezone=config.timezone)
     downloaded = 0
@@ -114,6 +129,8 @@ def download_files(config: Config) -> tuple[int, list[str], int]:
     try:
         for doc in list_documents(conn):
             name = doc["local_filename"] or main_filename(json.loads(doc["raw"]))
+            if doc["is_invoice"] and not doc["local_filename"]:
+                name = f"{INVOICES_DIR}/{name}"
             path = config.dest / name
             if doc["local_filename"] and path.is_file():
                 continue
@@ -273,7 +290,7 @@ def build_parser() -> argparse.ArgumentParser:
                              help=f"TOML config file (default: {DEFAULT_CONFIG})")
 
     index = commands.add_parser("index", parents=[config_args],
-                                help="fetch all documents from the API into the local database")
+                                help="fetch all documents and invoices from the API into the local database")
     index.add_argument("--json", action="store_true", help="also print the API response as JSON")
 
     commands.add_parser("list", parents=[config_args],
@@ -293,7 +310,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_index(config: Config, show_json: bool = False) -> int:
-    """Fetches all documents into the database and reports it.  Returns the exit code."""
+    """Fetches all documents and invoices into the database and reports it.  Returns the exit code."""
     try:
         response = fetch_documents(config)
         inserted, updated, db_path = save_documents(config, response.get("documents") or [])
@@ -307,8 +324,10 @@ def run_index(config: Config, show_json: bool = False) -> int:
         print(f"smata-documents: {e}", file=sys.stderr)
         return 1
 
-    listed = len(response.get("documents") or [])
-    print(f"Indexed {listed} documents ({inserted} new, {updated} changed) in {db_path}")
+    records = response.get("documents") or []
+    invoices = sum(1 for record in records if record.get("is_invoice"))
+    print(f"Indexed {len(records) - invoices} documents and {invoices} invoices "
+          f"({inserted} new, {updated} changed) in {db_path}")
     if show_json:
         json.dump(response, sys.stdout, indent=2, ensure_ascii=False)
         sys.stdout.write("\n")
